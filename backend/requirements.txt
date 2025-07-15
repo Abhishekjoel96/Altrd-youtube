@@ -1,5 +1,5 @@
-Flask>=2.0.0
-Flask-CORS>=3.0.0
-pytubefix
-yt-dlp
-requests 
+Flask==2.3.3
+Flask-CORS==4.0.0
+pytubefix==6.9.2
+yt-dlp==2023.10.13
+requests==2.31.0 
