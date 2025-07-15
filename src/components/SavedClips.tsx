@@ -133,7 +133,11 @@ export default function SavedClips({ clips, onRemoveClip }: SavedClipsProps) {
       const aspectRatio = clipAspectRatios[clip.id] || 'original';
       const quality = 'fhd'; // Hardcoded
       
-      const response = await fetch('/api/download-clip', {
+      const apiUrl = process.env.NODE_ENV === 'production' 
+        ? window.location.origin 
+        : 'http://localhost:5001';
+      
+      const response = await fetch(`${apiUrl}/download-clip`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -160,7 +164,7 @@ export default function SavedClips({ clips, onRemoveClip }: SavedClipsProps) {
         });
         
         // Optionally, trigger browser download
-        const downloadResponse = await fetch(`/api/download-file/${data.filename}`);
+        const downloadResponse = await fetch(`${apiUrl}/download-file/${data.filename}`);
         if (downloadResponse.ok) {
           const blob = await downloadResponse.blob();
           const url = window.URL.createObjectURL(blob);

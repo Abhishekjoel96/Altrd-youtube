@@ -21,7 +21,7 @@ except ImportError:
     YT_DLP_AVAILABLE = False
 
 app = Flask(__name__)
-CORS(app, origins=["*"])  # Allow all origins for Vercel deployment
+CORS(app)  # Enable CORS for Railway deployment
 
 # Create downloads directory if it doesn't exist
 DOWNLOADS_DIR = os.path.join(os.getcwd(), 'downloads')
@@ -546,8 +546,5 @@ def list_downloads():
 
 if __name__ == '__main__':
     print(f"Downloads will be saved to: {DOWNLOADS_DIR}")
-    app.run(debug=True, host='0.0.0.0', port=5001)
-
-# For Vercel deployment
-def handler(request):
-    return app(request.environ, request.start_response) 
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=False, host='0.0.0.0', port=port) 

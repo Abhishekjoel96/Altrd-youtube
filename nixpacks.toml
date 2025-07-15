@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = ['nodejs', 'python39', 'ffmpeg']
+
+[phases.install]
+cmds = [
+  'npm install --legacy-peer-deps',
+  'cd backend && pip install -r requirements.txt'
+]
+
+[phases.build]
+cmds = ['npm run build']
+
+[start]
+cmd = 'cd backend && python app.py' 

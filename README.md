@@ -18,7 +18,7 @@ A powerful YouTube video clipping application with 1080p downloads, smart aspect
   - Caching system to avoid re-downloading same videos
   - Dual-method fallback with yt-dlp and pytubefix
 - **Fast Processing**: Progressive streams for speed, adaptive streams for quality
-- **Vercel Deployment Ready**: Configured for easy deployment on Vercel
+- **Railway Deployment Ready**: Configured for seamless deployment on Railway
 
 ## 🛠 Tech Stack
 
@@ -96,24 +96,33 @@ npm run dev
 ```
 Frontend runs on: `http://localhost:3000`
 
-## 🌐 Vercel Deployment
+## 🌐 Railway Deployment
 
-This project is configured for easy deployment on Vercel:
+This project is optimized for Railway deployment, which provides:
+- ✅ Full FFmpeg support out of the box
+- ✅ Persistent file storage
+- ✅ Python + Node.js support
+- ✅ Works exactly like local environment
+- ✅ Zero configuration needed
 
-### 1. Deploy to Vercel
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Abhishekjoel96/Altrd-youtube)
+### 1. Deploy to Railway
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/github.com/Abhishekjoel96/Altrd-youtube)
 
 ### 2. Manual Deployment
-```bash
-# Install Vercel CLI
-npm i -g vercel
+1. Go to [railway.app](https://railway.app)
+2. Sign in with GitHub
+3. Click "New Project"
+4. Select "Deploy from GitHub repo"
+5. Choose your repository: `Abhishekjoel96/Altrd-youtube`
+6. Railway will automatically detect and deploy both services
 
-# Deploy
-vercel --prod
-```
-
-### 3. Environment Variables
-No additional environment variables needed for basic functionality.
+### 3. Configuration
+Railway automatically handles:
+- FFmpeg installation
+- Python and Node.js setup
+- Environment variables
+- Port configuration
+- Build process
 
 ## 📖 Usage
 
@@ -123,7 +132,7 @@ No additional environment variables needed for basic functionality.
    - Quality is automatically set to 1080p
    - Select aspect ratio for your target platform
 4. **Download**: Click the orange download button for each clip
-5. **Access Files**: Downloaded clips are saved locally
+5. **Access Files**: Downloaded clips are saved and can be downloaded
 
 ## 🎯 Performance Optimizations
 
@@ -155,19 +164,20 @@ No additional environment variables needed for basic functionality.
 │   ├── requirements.txt  # Python dependencies
 │   ├── downloads/        # Downloaded clips (ignored)
 │   └── cache/           # Video cache (ignored)
-├── vercel.json           # Vercel deployment config
+├── nixpacks.toml         # Railway build configuration
+├── Procfile             # Railway process configuration
 └── ...
 ```
 
 ## 🔧 API Endpoints
 
-### POST /api/download-clip
+### POST /download-clip
 Downloads and trims a YouTube video clip.
 
-### GET /api/download-file/<filename>
+### GET /download-file/<filename>
 Downloads a processed clip file.
 
-### GET /api/health
+### GET /health
 Health check endpoint.
 
 ## 🤝 Contributing
@@ -186,3 +196,4 @@ This project is licensed under the MIT License.
 - Built with Next.js and Flask
 - Uses yt-dlp for YouTube downloading
 - Powered by FFmpeg for video processing
+- Deployed on Railway for full compatibility
