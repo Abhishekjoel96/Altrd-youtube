@@ -1,54 +1,50 @@
-# Dependencies
-node_modules/
-backend/venv/
-*.pyc
-__pycache__/
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
 
-# Next.js
-.next/
-out/
-dist/
+# testing
+/coverage
 
-# Downloads (don't commit user files)
-backend/downloads/
-*.mp4
-*.mp3
-*.avi
-*.mov
+# next.js
+/.next/
+/out/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
+# production
+/build
 
-# OS
+# misc
 .DS_Store
-Thumbs.db
+*.pem
 
-# Logs
-*.log
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
+# local env files
+.env*.local
 
-# Coverage directory used by tools like istanbul
-coverage/
+# vercel
+.vercel
 
-# Build outputs
-build/
-*.tgz
-*.tar.gz
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Backend
+backend/downloads/
+backend/cache/
+backend/venv/
+backend/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/

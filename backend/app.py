@@ -5,6 +5,7 @@ import tempfile
 import subprocess
 import uuid
 from datetime import datetime
+import shutil
 
 # Try both pytubefix and yt-dlp as fallbacks
 try:
@@ -20,11 +21,22 @@ except ImportError:
     YT_DLP_AVAILABLE = False
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend requests
+CORS(app, origins=["*"])  # Allow all origins for Vercel deployment
 
 # Create downloads directory if it doesn't exist
 DOWNLOADS_DIR = os.path.join(os.getcwd(), 'downloads')
 os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+
+CACHE_DIR = os.path.join(os.getcwd(), 'cache')
+os.makedirs(CACHE_DIR, exist_ok=True)
+
+def get_cache_path(video_url, quality):
+    from urllib.parse import urlparse, parse_qs
+    parsed_url = urlparse(video_url)
+    video_id = parse_qs(parsed_url.query).get('v', [None])[0]
+    if not video_id:
+        raise ValueError("Invalid YouTube URL")
+    return os.path.join(CACHE_DIR, f"{video_id}_{quality}.mp4")
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -159,7 +171,7 @@ def test_video():
             "message": "Video is not accessible"
         }), 400
 
-def download_with_ytdlp(video_url, temp_dir, quality='hd'):
+def download_with_ytdlp(video_url, temp_dir, quality='fhd', start_time=0, end_time=0):
     """Download video using yt-dlp as a fallback method"""
     if not YT_DLP_AVAILABLE:
         raise Exception("yt-dlp not available")
@@ -193,6 +205,10 @@ def download_with_ytdlp(video_url, temp_dir, quality='hd'):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
     }
+    
+    # Add partial download if times provided and end_time > start_time
+    if start_time < end_time:
+        ydl_opts['download_sections'] = f"*{int(start_time)}-{int(end_time)}"
     
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
@@ -359,7 +375,7 @@ def download_clip():
         start_time = data.get('start')  # in seconds
         end_time = data.get('end')      # in seconds
         clip_title = data.get('title', 'clip')
-        quality = data.get('quality', 'hd')  # hd, fhd, 4k
+        quality = data.get('quality', 'fhd')  # hd, fhd, 4k
         aspect_ratio = data.get('aspectRatio', 'original')  # original, 16:9, 9:16, 1:1, 4:3
         
         if not video_url or start_time is None or end_time is None:
@@ -378,32 +394,46 @@ def download_clip():
             video_info = None
             download_method = None
             
-            # Try yt-dlp first (more reliable for YouTube)
-            if YT_DLP_AVAILABLE:
-                try:
-                    temp_video_path, video_info = download_with_ytdlp(video_url, temp_dir, quality)
-                    download_method = "yt-dlp"
-                except Exception as e:
-                    print(f"yt-dlp failed: {str(e)}")
-            
-            # If yt-dlp failed, try pytubefix
-            if not temp_video_path and PYTUBE_AVAILABLE:
-                try:
-                    temp_video_path, video_info = download_with_pytubefix(video_url, temp_dir, quality)
-                    download_method = "pytubefix-optimized"
-                except Exception as e:
-                    print(f"pytubefix failed: {str(e)}")
-            
-            # If both methods failed
-            if not temp_video_path:
-                return jsonify({
-                    "error": "Cannot access video with any available method",
-                    "details": "This video might be private, restricted, geo-blocked, or YouTube is blocking automated access. Try a different video or check your internet connection.",
-                    "available_methods": {
-                        "yt-dlp": YT_DLP_AVAILABLE,
-                        "pytubefix": PYTUBE_AVAILABLE
-                    }
-                }), 400
+            # Check cache
+            cache_path = get_cache_path(video_url, quality)
+            if os.path.exists(cache_path):
+                temp_video_path = os.path.join(temp_dir, 'temp_video.mp4')
+                shutil.copy(cache_path, temp_video_path)
+                print(f"Using cached video: {cache_path}")
+                download_method = "cached"
+            else:
+                # Try yt-dlp with partial
+                if YT_DLP_AVAILABLE:
+                    try:
+                        temp_video_path, video_info = download_with_ytdlp(video_url, temp_dir, quality, start_time, end_time)
+                        download_method = "yt-dlp"
+                        # Cache the result
+                        if temp_video_path:
+                            shutil.copy(temp_video_path, cache_path)
+                    except Exception as e:
+                        print(f"yt-dlp failed: {str(e)}")
+                
+                # If yt-dlp failed, try pytubefix (note: pytubefix doesn't support partial, so full download)
+                if not temp_video_path and PYTUBE_AVAILABLE:
+                    try:
+                        temp_video_path, video_info = download_with_pytubefix(video_url, temp_dir, quality)
+                        download_method = "pytubefix-optimized"
+                        # Cache the result
+                        if temp_video_path:
+                            shutil.copy(temp_video_path, cache_path)
+                    except Exception as e:
+                        print(f"pytubefix failed: {str(e)}")
+                
+                # If both methods failed
+                if not temp_video_path:
+                    return jsonify({
+                        "error": "Cannot access video with any available method",
+                        "details": "This video might be private, restricted, geo-blocked, or YouTube is blocking automated access. Try a different video or check your internet connection.",
+                        "available_methods": {
+                            "yt-dlp": YT_DLP_AVAILABLE,
+                            "pytubefix": PYTUBE_AVAILABLE
+                        }
+                    }), 400
             
             print(f"Successfully downloaded using {download_method}")
             
@@ -516,4 +546,8 @@ def list_downloads():
 
 if __name__ == '__main__':
     print(f"Downloads will be saved to: {DOWNLOADS_DIR}")
-    app.run(debug=True, host='0.0.0.0', port=5001) 
+    app.run(debug=True, host='0.0.0.0', port=5001)
+
+# For Vercel deployment
+def handler(request):
+    return app(request.environ, request.start_response) 

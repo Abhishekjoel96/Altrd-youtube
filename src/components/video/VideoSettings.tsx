@@ -28,26 +28,7 @@ export function VideoSettings({
 }: VideoSettingsProps) {
   return (
     <div className="space-y-4">
-      {/* Quality Control */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Video Quality
-        </label>
-        <Select
-          value={settings.quality}
-          onValueChange={(value: ClipSettings['quality']) => onQualityChange(value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select video quality" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="hd">HD (720p+)</SelectItem>
-            <SelectItem value="fhd">Full HD (1080p+)</SelectItem>
-            <SelectItem value="4k">4K (2160p+)</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
+      {/* Removed Quality Control */}
       {/* Aspect Ratio Control */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">

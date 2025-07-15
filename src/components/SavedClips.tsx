@@ -28,7 +28,6 @@ export default function SavedClips({ clips, onRemoveClip }: SavedClipsProps) {
   const [mounted, setMounted] = useState(false);
   const [clipSettings, setClipSettings] = useState<Record<string, ClipSettings>>({});
   const [clipAspectRatios, setClipAspectRatios] = useState<Record<string, ClipSettings['aspectRatio']>>({});
-  const [clipQualities, setClipQualities] = useState<Record<string, ClipSettings['quality']>>({});
   const [downloadingClips, setDownloadingClips] = useState<Record<string, boolean>>({});
   // const [clipScheduleTimes, setClipScheduleTimes] = useState<Record<string, Date | null>>({});
 
@@ -39,34 +38,25 @@ export default function SavedClips({ clips, onRemoveClip }: SavedClipsProps) {
     // Initialize settings for all clips
     const initialSettings: Record<string, ClipSettings> = {};
     const initialAspectRatios: Record<string, ClipSettings['aspectRatio']> = {};
-    const initialQualities: Record<string, ClipSettings['quality']> = {};
-    // const initialScheduleTimes: Record<string, Date | null> = {};
     
     clips.forEach(clip => {
       initialSettings[clip.id] = getDefaultSettings();
       initialAspectRatios[clip.id] = 'original';
-      initialQualities[clip.id] = 'hd';
       // initialScheduleTimes[clip.id] = clip.scheduleTime || null;
     });
     
     setClipSettings(initialSettings);
     setClipAspectRatios(initialAspectRatios);
-    setClipQualities(initialQualities);
     // setClipScheduleTimes(initialScheduleTimes);
   }, []);
 
   // Update aspect ratios and qualities when clips change
   useEffect(() => {
     const updatedAspectRatios: Record<string, ClipSettings['aspectRatio']> = { ...clipAspectRatios };
-    const updatedQualities: Record<string, ClipSettings['quality']> = { ...clipQualities };
-    // const updatedScheduleTimes: Record<string, Date | null> = { ...clipScheduleTimes };
     
     clips.forEach(clip => {
       if (!updatedAspectRatios[clip.id]) {
         updatedAspectRatios[clip.id] = 'original';
-      }
-      if (!updatedQualities[clip.id]) {
-        updatedQualities[clip.id] = 'hd';
       }
       // if (!updatedScheduleTimes[clip.id]) {
       //   updatedScheduleTimes[clip.id] = clip.scheduleTime || null;
@@ -74,13 +64,12 @@ export default function SavedClips({ clips, onRemoveClip }: SavedClipsProps) {
     });
     
     setClipAspectRatios(updatedAspectRatios);
-    setClipQualities(updatedQualities);
     // setClipScheduleTimes(updatedScheduleTimes);
   }, [clips]);
 
   const getDefaultSettings = (): ClipSettings => ({
     aspectRatio: "original",
-    quality: "hd",
+    quality: "fhd",
     xPosition: 50,
     yPosition: 50,
     zoomLevel: 100,
@@ -94,7 +83,7 @@ export default function SavedClips({ clips, onRemoveClip }: SavedClipsProps) {
     return {
       ...baseSettings,
       aspectRatio: clipAspectRatios[clipId] || 'original',
-      quality: clipQualities[clipId] || 'hd',
+      quality: 'fhd', // Hardcode to fhd
     };
   };
 
@@ -133,13 +122,6 @@ export default function SavedClips({ clips, onRemoveClip }: SavedClipsProps) {
     }));
   };
 
-  const handleQualityChange = (clipId: string, quality: ClipSettings['quality']) => {
-    setClipQualities(prev => ({
-      ...prev,
-      [clipId]: quality
-    }));
-  };
-
   const downloadClip = async (clip: SavedClip) => {
     setDownloadingClips(prev => ({
       ...prev,
@@ -149,9 +131,9 @@ export default function SavedClips({ clips, onRemoveClip }: SavedClipsProps) {
     try {
       // Get the aspect ratio and quality settings for this clip
       const aspectRatio = clipAspectRatios[clip.id] || 'original';
-      const quality = clipQualities[clip.id] || 'hd';
+      const quality = 'fhd'; // Hardcoded
       
-      const response = await fetch('http://localhost:5001/download-clip', {
+      const response = await fetch('/api/download-clip', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -166,15 +148,19 @@ export default function SavedClips({ clips, onRemoveClip }: SavedClipsProps) {
         }),
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
 
-      if (response.ok && data.success) {
+      if (data.success) {
         toast.success("Clip downloaded successfully!", {
           description: `${data.filename} has been saved to your downloads folder.`,
         });
         
         // Optionally, trigger browser download
-        const downloadResponse = await fetch(`http://localhost:5001/download-file/${data.filename}`);
+        const downloadResponse = await fetch(`/api/download-file/${data.filename}`);
         if (downloadResponse.ok) {
           const blob = await downloadResponse.blob();
           const url = window.URL.createObjectURL(blob);
@@ -192,9 +178,15 @@ export default function SavedClips({ clips, onRemoveClip }: SavedClipsProps) {
       }
     } catch (error) {
       console.error('Error downloading clip:', error);
-      toast.error("Failed to download clip", {
-        description: error instanceof Error ? error.message : "Please check if the backend service is running.",
-      });
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        toast.error("Connection failed", {
+          description: "Cannot connect to backend server. Please make sure it's running on port 5001.",
+        });
+      } else {
+        toast.error("Failed to download clip", {
+          description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        });
+      }
     } finally {
       setDownloadingClips(prev => ({
         ...prev,
@@ -290,7 +282,6 @@ export default function SavedClips({ clips, onRemoveClip }: SavedClipsProps) {
                         clipId={clip.id}
                         settings={settings}
                         onAspectRatioChange={(ratio) => handleAspectRatioChange(clip.id, ratio)}
-                        onQualityChange={(quality) => handleQualityChange(clip.id, quality)}
                       />
                     </>
                   )}

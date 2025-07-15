@@ -1,21 +1,24 @@
 # Altrd Labs YouTube Clipper
 
-A powerful YouTube video clipping application with HD quality downloads and smart aspect ratio conversion.
+A powerful YouTube video clipping application with 1080p downloads, smart aspect ratio conversion, and optimized performance.
 
 ## 🚀 Features
 
 - **YouTube Video Analysis**: Extract video information and create precise clips
-- **HD Quality Downloads**: Support for HD (720p), Full HD (1080p), and 4K (2160p) downloads
+- **1080p Quality Downloads**: Hardcoded to download in Full HD (1080p) for consistent quality
 - **Smart Aspect Ratio Conversion**: Convert clips to various aspect ratios:
-  - 16:9 (Landscape)
   - 9:16 (Portrait/TikTok)
   - 1:1 (Square/Instagram)
   - 4:5 (Instagram Portrait)
+  - 16:9 (Landscape)
   - 4:3 (Classic)
   - Original (Fast copy, no conversion)
-- **Optimized Download Pipeline**: Dual-method fallback with yt-dlp and pytubefix
+- **Optimized Download Pipeline**: 
+  - Partial downloads using yt-dlp for faster processing
+  - Caching system to avoid re-downloading same videos
+  - Dual-method fallback with yt-dlp and pytubefix
 - **Fast Processing**: Progressive streams for speed, adaptive streams for quality
-- **Local Storage**: All clips saved locally for immediate access
+- **Vercel Deployment Ready**: Configured for easy deployment on Vercel
 
 ## 🛠 Tech Stack
 
@@ -28,7 +31,7 @@ A powerful YouTube video clipping application with HD quality downloads and smar
 
 ### Backend
 - **Python Flask** server
-- **yt-dlp** for primary video downloading
+- **yt-dlp** for primary video downloading with partial download support
 - **pytubefix** for fallback downloading
 - **FFmpeg** for video processing and aspect ratio conversion
 
@@ -39,7 +42,7 @@ A powerful YouTube video clipping application with HD quality downloads and smar
 - **FFmpeg** installed and in PATH
 - **Git** for version control
 
-## 🔧 Installation
+## 🔧 Local Development
 
 ### 1. Clone the Repository
 ```bash
@@ -77,7 +80,7 @@ sudo apt update
 sudo apt install ffmpeg
 ```
 
-## 🚀 Running the Application
+## 🚀 Running Locally
 
 ### Start Backend (Terminal 1)
 ```bash
@@ -91,29 +94,47 @@ Backend runs on: `http://localhost:5001`
 ```bash
 npm run dev
 ```
-Frontend runs on: `http://localhost:3000` (or 3001 if 3000 is busy)
+Frontend runs on: `http://localhost:3000`
+
+## 🌐 Vercel Deployment
+
+This project is configured for easy deployment on Vercel:
+
+### 1. Deploy to Vercel
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Abhishekjoel96/Altrd-youtube)
+
+### 2. Manual Deployment
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel --prod
+```
+
+### 3. Environment Variables
+No additional environment variables needed for basic functionality.
 
 ## 📖 Usage
 
 1. **Add YouTube Video**: Paste a YouTube URL and click "Analyze Video"
 2. **Create Clips**: Use the timeline to select start/end times for clips
 3. **Configure Settings**: 
-   - Choose video quality (HD/FHD/4K)
-   - Select aspect ratio
+   - Quality is automatically set to 1080p
+   - Select aspect ratio for your target platform
 4. **Download**: Click the orange download button for each clip
-5. **Access Files**: Downloaded clips are saved in `backend/downloads/`
+5. **Access Files**: Downloaded clips are saved locally
 
 ## 🎯 Performance Optimizations
 
 ### Download Strategy
-- **HD Quality**: Uses progressive streams (single file, faster)
-- **FHD/4K Quality**: Uses adaptive streams (separate video/audio, higher quality)
+- **Partial Downloads**: Only downloads the clip portion using yt-dlp `--download-sections`
+- **Caching**: Stores downloaded videos to avoid re-downloading
 - **Smart Fallback**: yt-dlp → pytubefix if primary method fails
 
-### File Size Management
-- **HD**: Files capped at ~500MB for speed
-- **FHD**: Files capped at ~1GB for reasonable size
-- **4K**: Files capped at ~2GB for quality
+### Quality Settings
+- **Hardcoded 1080p**: Ensures consistent Full HD quality
+- **Optimized Format Selection**: Prioritizes MP4 with reasonable file sizes
 
 ### FFmpeg Processing
 - **Original Aspect Ratio**: Fast copy (no re-encoding)
@@ -133,62 +154,35 @@ Frontend runs on: `http://localhost:3000` (or 3001 if 3000 is busy)
 │   ├── app.py            # Main Flask application
 │   ├── requirements.txt  # Python dependencies
 │   ├── downloads/        # Downloaded clips (ignored)
-│   └── venv/            # Virtual environment (ignored)
-├── public/               # Static assets
+│   └── cache/           # Video cache (ignored)
+├── vercel.json           # Vercel deployment config
 └── ...
 ```
 
-## 🔧 Configuration
+## 🔧 API Endpoints
 
-### Environment Variables
-Create `.env.local` in root directory:
-```bash
-NEXT_PUBLIC_API_URL=http://localhost:5001
-```
+### POST /api/download-clip
+Downloads and trims a YouTube video clip.
 
-### Backend Configuration
-The backend automatically configures:
-- Download directory: `backend/downloads/`
-- Port: 5001 (configurable in app.py)
-- CORS: Enabled for frontend communication
+### GET /api/download-file/<filename>
+Downloads a processed clip file.
+
+### GET /api/health
+Health check endpoint.
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ## 📝 License
 
 This project is licensed under the MIT License.
 
-## 🐛 Troubleshooting
+## 🙏 Acknowledgments
 
-### Common Issues
-
-**FFmpeg not found:**
-- Ensure FFmpeg is installed and in your system PATH
-- Test with: `ffmpeg -version`
-
-**Port conflicts:**
-- Frontend will auto-switch to port 3001 if 3000 is busy
-- Backend can be changed in `app.py` (default: 5001)
-
-**Download failures:**
-- Check internet connection
-- Some videos may be geo-restricted or private
-- Try a different video to test
-
-**Large file downloads:**
-- Adjust quality settings for faster downloads
-- Use HD for speed, FHD/4K for quality
-
-## 📧 Support
-
-For issues and support, please create an issue on GitHub or contact Altrd Labs.
-
----
-
-Made with ❤️ by Altrd Labs
+- Built with Next.js and Flask
+- Uses yt-dlp for YouTube downloading
+- Powered by FFmpeg for video processing
