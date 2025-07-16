@@ -286,6 +286,7 @@ export default function SavedClips({ clips, onRemoveClip }: SavedClipsProps) {
                         clipId={clip.id}
                         settings={settings}
                         onAspectRatioChange={(ratio) => handleAspectRatioChange(clip.id, ratio)}
+                        onQualityChange={(quality) => {/* Quality change handler */}}
                       />
                     </>
                   )}

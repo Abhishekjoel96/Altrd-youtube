@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
 import os
 import tempfile
@@ -20,7 +20,7 @@ try:
 except ImportError:
     YT_DLP_AVAILABLE = False
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../out', static_url_path='')
 CORS(app)  # Enable CORS for Railway deployment
 
 # Create downloads directory if it doesn't exist
@@ -543,6 +543,19 @@ def list_downloads():
         return jsonify({"files": files})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# Serve React App
+@app.route('/')
+def serve_react_app():
+    return send_from_directory(app.static_folder, 'index.html')
+
+# Serve React App assets
+@app.route('/<path:path>')
+def serve_react_assets(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
     print(f"Downloads will be saved to: {DOWNLOADS_DIR}")
