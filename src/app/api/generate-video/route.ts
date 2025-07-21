@@ -112,21 +112,21 @@ function getCanvasDimensions(aspectRatio: string): { width: number; height: numb
 function getVideoProcessing(aspectRatio: string): { crop: string; scale: string } {
   switch (aspectRatio) {
     case '16:9':
-      // For horizontal, crop to 16:9 and scale to full width
-      return { crop: 'crop=ih*16/9:ih', scale: 'scale=1920:1080' };
+      // For horizontal, scale to full width without cropping
+      return { crop: '', scale: 'scale=1920:1080' };
     case '1:1':
-      // For square, crop to square and scale
-      return { crop: 'crop=ih:ih', scale: 'scale=1080:1080' };
+      // For square, scale to square without cropping
+      return { crop: '', scale: 'scale=1080:1080' };
     case '4:5':
-      // For 4:5, crop accordingly and scale
-      return { crop: 'crop=ih*4/5:ih', scale: 'scale=1080:1350' };
+      // For 4:5, scale accordingly without cropping
+      return { crop: '', scale: 'scale=1080:1350' };
     case '3:4':
-      // For 3:4, crop accordingly and scale
-      return { crop: 'crop=ih*3/4:ih', scale: 'scale=1080:1440' };
+      // For 3:4, scale accordingly without cropping
+      return { crop: '', scale: 'scale=1080:1440' };
     case '9:16':
     default:
-      // For vertical, crop to square and scale
-      return { crop: 'crop=ih:ih', scale: 'scale=1080:1080' };
+      // For vertical, scale without cropping
+      return { crop: '', scale: 'scale=1080:1920' };
   }
 }
 
@@ -364,7 +364,7 @@ export async function POST(request: NextRequest) {
       const filters = [];
       
       // 1. Crop and scale video based on aspect ratio
-      filters.push(`[0:v]${videoProcessing.crop},${videoProcessing.scale},setsar=1[processed_video_base]`);
+      filters.push(`[0:v]${videoProcessing.scale},setsar=1[processed_video_base]`);
       
       // 2. Create background with custom color and dynamic size
       filters.push(`color=c=${canvasBackgroundColor.replace('#', '')}:s=${canvasDimensions.width}x${canvasDimensions.height}:d=${duration}[bg]`);
