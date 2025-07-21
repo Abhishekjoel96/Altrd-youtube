@@ -29,13 +29,3 @@ export function timeToSeconds(timeStr: string): number {
     return 0;
   }
 } 
-
-export function formatTimestamp(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = seconds % 60;
-  const wholeSeconds = Math.floor(remainingSeconds);
-  const milliseconds = Math.round((remainingSeconds - wholeSeconds) * 1000);
-
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${wholeSeconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
-} 

@@ -214,6 +214,9 @@ export default function Home() {
                             Copy Link
                           </Button>
                         </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Video includes burned-in captions, titles, and credits as configured.
+                        </p>
                       </div>
                     )}
                   </div>

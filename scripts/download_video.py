@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Enhanced YouTube Video Downloader with Robust Audio and Subtitle Handling
+Enhanced YouTube Video Downloader using pytubefix
+Optimized for high-quality 1080p downloads with intelligent stream selection
 """
 
 from pytubefix import YouTube
@@ -11,58 +12,96 @@ import sys
 import os
 
 def select_best_stream(yt, target_resolution='1080p'):
-    """Select the best video stream with intelligent resolution selection"""
+    """
+    Intelligently select the best video stream
+    
+    Args:
+        yt (YouTube): YouTube video object
+        target_resolution (str): Preferred resolution
+    
+    Returns:
+        Stream: Best matching video stream
+    """
     try:
-        # Prioritize DASH streams first
+        # First, try to find DASH streams matching target resolution
         streams = yt.streams.filter(
             progressive=False,
             file_extension='mp4',
             type='video'
         )
         
+        # Sort streams by resolution, prioritizing target resolution
         sorted_streams = sorted(
             streams, 
             key=lambda s: (
-                0 if s.resolution == target_resolution else 1,
-                -int(s.resolution.replace('p', '') if s.resolution else 0)
+                0 if s.resolution == target_resolution else 1,  # Prioritize target resolution
+                -int(s.resolution.replace('p', '') if s.resolution else 0)  # Then sort by resolution
             )
         )
         
-        return sorted_streams[0] if sorted_streams else yt.streams.get_highest_resolution()
+        if sorted_streams:
+            return sorted_streams[0]
+        
+        # Fallback to progressive streams if no DASH streams found
+        progressive_streams = yt.streams.filter(
+            progressive=True,
+            file_extension='mp4'
+        )
+        
+        fallback_stream = progressive_streams.get_highest_resolution()
+        if fallback_stream:
+            return fallback_stream
+        
+        raise ValueError("No suitable video streams found")
     
     except Exception as e:
-        raise RuntimeError(f"Video stream selection error: {str(e)}")
+        raise RuntimeError(f"Stream selection error: {str(e)}")
 
 def select_best_audio_stream(yt):
-    """Select the highest quality audio stream"""
+    """
+    Select the highest quality audio stream
+    
+    Args:
+        yt (YouTube): YouTube video object
+    
+    Returns:
+        Stream: Best audio stream
+    """
     try:
-        # Prioritize high bitrate MP4 audio streams
+        # Prioritize MP4 audio streams
         audio_streams = yt.streams.filter(
             type='audio', 
             file_extension='mp4'
         )
         
+        if not audio_streams:
+            # Fallback to any audio stream
+            audio_streams = yt.streams.filter(type='audio')
+        
+        # Sort by audio bitrate, highest first
         sorted_audio_streams = sorted(
             audio_streams, 
             key=lambda s: int(s.abr.replace('kbps', '') if s.abr else 0), 
             reverse=True
         )
         
-        return sorted_audio_streams[0] if sorted_audio_streams else None
+        if sorted_audio_streams:
+            return sorted_audio_streams[0]
+        
+        raise ValueError("No suitable audio streams found")
     
     except Exception as e:
         raise RuntimeError(f"Audio stream selection error: {str(e)}")
 
-def download_video(url, start_time, end_time, output_path, srt_path=None):
+def download_video(url, start_time, end_time, output_path):
     """
-    Download and process YouTube video with advanced stream handling
+    Download and process YouTube video with intelligent stream handling
     
     Args:
         url (str): YouTube video URL
         start_time (float): Clip start time
         end_time (float): Clip end time
         output_path (str): Path to save final video
-        srt_path (str, optional): Path to subtitle file
     
     Returns:
         dict: Download result with metadata
@@ -85,42 +124,28 @@ def download_video(url, start_time, end_time, output_path, srt_path=None):
             video_file = os.path.join(temp_dir, 'video.mp4')
             audio_file = os.path.join(temp_dir, 'audio.mp4')
             
-            # Download streams
+            # Download streams silently
             video_stream.download(output_path=temp_dir, filename='video.mp4')
-            
-            # Audio is optional
-            if audio_stream:
-                audio_stream.download(output_path=temp_dir, filename='audio.mp4')
+            audio_stream.download(output_path=temp_dir, filename='audio.mp4')
             
             # Ensure output directory exists
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             
-            # Prepare FFmpeg command with comprehensive options
+            # FFmpeg command for merging and clipping
             ffmpeg_cmd = [
-                'ffmpeg', '-y', '-loglevel', 'error',
-                '-i', video_file
-            ]
-            
-            # Add audio input if available
-            if audio_stream and os.path.exists(audio_file):
-                ffmpeg_cmd.extend(['-i', audio_file])
-            
-            # Add subtitle input if available
-            if srt_path and os.path.exists(srt_path):
-                ffmpeg_cmd.extend(['-vf', f'subtitles={srt_path}'])
-            
-            # Clip and encode settings
-            ffmpeg_cmd.extend([
+                'ffmpeg', '-y', '-loglevel', 'error',  # Completely suppress output
+                '-i', video_file,
+                '-i', audio_file,
                 '-ss', str(start_time),
                 '-t', str(end_time - start_time),
                 '-c:v', 'libx264',
                 '-c:a', 'aac',
                 '-preset', 'fast',
-                '-crf', '23',
+                '-crf', '23',  # Balanced quality and file size
                 output_path
-            ])
+            ]
             
-            # Execute FFmpeg
+            # Run FFmpeg with error checking
             subprocess.run(
                 ffmpeg_cmd, 
                 capture_output=True, 
@@ -135,7 +160,7 @@ def download_video(url, start_time, end_time, output_path, srt_path=None):
                 "resolution": video_stream.resolution,
                 "duration": end_time - start_time,
                 "video_fps": video_stream.fps,
-                "audio_bitrate": audio_stream.abr if audio_stream else "N/A"
+                "audio_bitrate": audio_stream.abr
             }
     
     except subprocess.CalledProcessError as e:
@@ -151,22 +176,17 @@ def download_video(url, start_time, end_time, output_path, srt_path=None):
 
 def main():
     """Main function to handle command line arguments"""
-    if len(sys.argv) < 5:
+    if len(sys.argv) != 5:
         print(json.dumps({
             "success": False,
-            "error": "Usage: python download_video.py <url> <start_time> <end_time> <output_path> [srt_path]"
+            "error": "Usage: python download_video.py <url> <start_time> <end_time> <output_path>"
         }))
         sys.exit(1)
     
-    url = sys.argv[1]
-    start_time = float(sys.argv[2])
-    end_time = float(sys.argv[3])
-    output_path = sys.argv[4]
-    srt_path = sys.argv[5] if len(sys.argv) > 5 else None
+    url, start_time, end_time, output_path = sys.argv[1:]
+    result = download_video(url, float(start_time), float(end_time), output_path)
     
-    result = download_video(url, start_time, end_time, output_path, srt_path)
-    
-    # Ensure clean JSON output
+    # Ensure clean JSON output with no additional characters
     sys.stdout.write(json.dumps(result) + '\n')
     sys.stdout.flush()
 

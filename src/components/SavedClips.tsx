@@ -15,7 +15,7 @@ import { Trash2, Save, Edit, Pencil } from "lucide-react";
 import { VideoPlayer } from "./video/VideoPlayer";
 import { VideoSettings } from "./video/VideoSettings";
 import { ClipSettings } from "./video/types";
-import { formatTime, formatTimestamp, timeToSeconds } from "./video/utils";
+import { formatTime } from "./video/utils";
 import { toast } from "sonner";
 import { WebhookUrlModal } from "./WebhookUrlModal";
 import { getWebhookUrl, saveWebhookUrl } from "@/lib/webhookStore";
@@ -198,32 +198,14 @@ export default function SavedClips({ clips, onRemoveClip, onUpdateClip, onSwitch
       
     const settings = getSettings(clip.id);
     
-    // Standardize caption timestamps relative to clip start
-    const standardizeCaptions = (captions?: Array<{start: string, end: string, text: string}>) => {
-      if (!captions) return [];
-      
-      return captions.map(caption => {
-        // Convert timestamps to seconds relative to clip start
-        const startSeconds = timeToSeconds(caption.start) - clip.start;
-        const endSeconds = timeToSeconds(caption.end) - clip.start;
-        
-        return {
-          start: formatTimestamp(Math.max(0, startSeconds)),
-          end: formatTimestamp(Math.max(0, endSeconds)),
-          text: caption.text
-        };
-      }).filter(c => c.start !== c.end); // Remove zero-duration captions
-    };
-    
-    const standardizedCaptions = standardizeCaptions(clip.captions);
-    
-    console.log('Generating video with standardized captions:', {
+    // Log the settings being sent for debugging
+    console.log('Generating video with settings:', {
       title: settings.topText,
       credits: settings.bottomText,
       titleFont: settings.titleFontFamily,
       captionFont: settings.captionFontFamily,
       creditsFont: settings.creditsFontFamily,
-      captionCount: standardizedCaptions.length
+      captionCount: clip.captions?.length || 0
     });
       
     try {
@@ -234,7 +216,7 @@ export default function SavedClips({ clips, onRemoveClip, onUpdateClip, onSwitch
           youtubeUrl: clip.originalUrl,
           startTime: clip.start,
           endTime: clip.end,
-          captions: standardizedCaptions,
+          captions: clip.captions,
           aspectRatio: settings.aspectRatio,
           title: settings.topText,
           credit: settings.bottomText,

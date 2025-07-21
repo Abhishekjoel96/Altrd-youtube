@@ -38,29 +38,20 @@ async function downloadVideoWithPytubefix(
   youtubeUrl: string, 
   startTime: number, 
   endTime: number, 
-  outputPath: string,
-  srtPath?: string  // Add optional subtitle path
+  outputPath: string
 ): Promise<{ success: boolean; error?: string; resolution?: string }> {
   return new Promise((resolve) => {
     const scriptPath = path.join(process.cwd(), 'scripts', 'download_video.py');
     
-    // Prepare command arguments
-    const args = [
+    console.log(`Calling Python script: python3 ${scriptPath} "${youtubeUrl}" ${startTime} ${endTime} "${outputPath}"`);
+    
+    const python = spawn('python3', [
       scriptPath,
       youtubeUrl,
       startTime.toString(),
       endTime.toString(),
       outputPath
-    ];
-
-    // Add SRT path if available
-    if (srtPath) {
-      args.push(srtPath);
-    }
-    
-    console.log(`Calling Python script: python3 ${args.join(' ')}`);
-    
-    const python = spawn('python3', args);
+    ]);
 
     let stdout = '';
     let stderr = '';
@@ -140,32 +131,19 @@ function getVideoProcessing(aspectRatio: string): { crop: string; scale: string 
 }
 
 const generateSrtContent = (captions: Caption[], startTimeOffset: number): string => {
-  // Ensure captions are sorted by start time
-  const sortedCaptions = captions.sort((a, b) => 
-    timeToSeconds(a.start) - timeToSeconds(b.start)
-  );
-
-  return sortedCaptions
-    .filter(caption => caption.text.trim() !== '') // Remove empty captions
+  return captions
     .map((caption, index) => {
       // Convert timestamps to seconds, subtract the start offset, then convert back
       const startSeconds = timeToSeconds(caption.start) - startTimeOffset;
       const endSeconds = timeToSeconds(caption.end) - startTimeOffset;
       
-      // Ensure times are not negative and end time is after start time
+      // Ensure times are not negative
       const adjustedStart = Math.max(0, startSeconds);
-      const adjustedEnd = Math.max(adjustedStart + 0.1, endSeconds);
+      const adjustedEnd = Math.max(0, endSeconds);
       
-      // Convert to SRT timestamp format (HH:MM:SS,mmm)
       const srtStart = formatTimestamp(adjustedStart).replace('.', ',');
       const srtEnd = formatTimestamp(adjustedEnd).replace('.', ',');
-      
-      // Trim and clean caption text
-      const cleanText = caption.text.trim()
-        .replace(/\n+/g, ' ') // Replace multiple newlines with single space
-        .replace(/\s+/g, ' '); // Normalize whitespace
-      
-      return `${index + 1}\n${srtStart} --> ${srtEnd}\n${cleanText}\n`;
+      return `${index + 1}\n${srtStart} --> ${srtEnd}\n${caption.text}\n`;
     })
     .join('\n');
 };
@@ -199,10 +177,8 @@ function formatTimestamp(seconds: number): string {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${wholeSeconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
 }
 
-// Modify the POST function to include SRT file generation and passing
 export async function POST(request: NextRequest) {
   const tempDir = path.join('/tmp', `video-gen-${uuidv4()}`);
-  let srtPath: string | undefined;
   let cleanupDone = false;
   
   try {
@@ -217,6 +193,7 @@ export async function POST(request: NextRequest) {
       title,
       credit,
       aspectRatio = '9:16',
+      titleFontSize = 60,
       titleColor = 'white',
       captionFontSize = 48,
       captionColor = 'white',
@@ -233,49 +210,269 @@ export async function POST(request: NextRequest) {
       captionBold = false,
       captionItalic = false,
       creditBold = false,
-      creditItalic = false
+      creditItalic = false,
+      titlePosition = { x: 180, y: 120, width: 720, height: 200 },
+      captionPosition = { x: 180, y: 860, width: 720, height: 200 },
+      creditPosition = { x: 180, y: 1600, width: 720, height: 200 },
     } = body;
 
-    // Generate SRT file if captions exist
+    console.log('Video generation request:', { title, credit, youtubeUrl, startTime, endTime, aspectRatio });
+
+    const publicDir = path.join(process.cwd(), 'public', 'videos');
+    await fs.mkdir(publicDir, { recursive: true });
+
+    const finalVideoName = `final-${uuidv4()}.mp4`;
+    const outputPath = path.join(publicDir, finalVideoName);
+    
+    // --- 1. Generate SRT and Text Images ---
+    const srtPath = path.join(tempDir, 'captions.srt');
     if (captions && captions.length > 0) {
-      srtPath = path.join(tempDir, 'captions.srt');
-      const srtContent = generateSrtContent(captions, startTime);
+      // Validate caption timing
+      const clipDuration = endTime - startTime;
+      const validatedCaptions = captions.filter((caption: Caption) => {
+        const captionStart = timeToSeconds(caption.start) - startTime;
+        const captionEnd = timeToSeconds(caption.end) - startTime;
+        return captionStart >= 0 && captionEnd <= clipDuration && captionStart < captionEnd;
+      });
+
+      console.log(`Original captions: ${captions.length}, Valid captions: ${validatedCaptions.length}`);
+      console.log(`Clip duration: ${clipDuration}s, Start offset: ${startTime}s`);
+      
+      const srtContent = generateSrtContent(validatedCaptions, startTime);
       await fs.writeFile(srtPath, srtContent);
-      console.log('SRT file generated:', srtPath);
+      console.log('SRT file created:', srtPath);
+      console.log('SRT content preview:', srtContent.substring(0, 200) + '...');
     }
 
-    const outputPath = path.join(tempDir, 'output.mp4');
+    // Get canvas dimensions for the selected aspect ratio
+    const canvasDimensions = getCanvasDimensions(aspectRatio);
 
-    // Ensure output directory exists
-    await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    // Generate title image with custom positioning
+    console.log('Generating title image:', title);
+    const titleImagePath = path.join(tempDir, 'title.png');
+    
+    if (!title || title.trim() === '') {
+      console.log('Title is empty, creating blank title image');
+      // Create a blank transparent image for empty title
+      const blankTitleBuffer = await createTextImage({ 
+        text: ' ', // Single space to create minimal image
+        width: titlePosition.width,
+        fontSize: titleFontSize, 
+        fontColor: 'transparent', 
+        fontFamily: titleFontFamily,
+        fontWeight: titleBold ? 'bold' : 'normal',
+        fontStyle: titleItalic ? 'italic' : 'normal',
+      });
+      await fs.writeFile(titleImagePath, blankTitleBuffer);
+    } else {
+      const titleImageBuffer = await createTextImage({ 
+        text: title, 
+        width: titlePosition.width, // Use manual positioning width
+        fontSize: titleFontSize, 
+        fontColor: titleColor, 
+        fontFamily: titleFontFamily,
+        fontWeight: titleBold ? 'bold' : 'normal',
+        fontStyle: titleItalic ? 'italic' : 'normal',
+      });
+      await fs.writeFile(titleImagePath, titleImageBuffer);
+    }
 
-    // Call download function with optional SRT path
-    const downloadResult = await downloadVideoWithPytubefix(
-      youtubeUrl, 
-      startTime, 
-      endTime, 
-      outputPath,
-      srtPath  // Pass SRT path if generated
-    );
+    // Generate credit image with custom positioning
+    console.log('Generating credit image:', credit);
+    const creditImagePath = path.join(tempDir, 'credit.png');
+    
+    if (!credit || credit.trim() === '') {
+      console.log('Credit is empty, creating blank credit image');
+      // Create a blank transparent image for empty credit
+      const blankCreditBuffer = await createTextImage({ 
+        text: ' ', // Single space to create minimal image
+        width: creditPosition.width,
+        fontSize: creditFontSize, 
+        fontColor: 'transparent', 
+        fontFamily: creditsFontFamily,
+        textAlign: 'left',
+        fontWeight: creditBold ? 'bold' : 'normal',
+        fontStyle: creditItalic ? 'italic' : 'normal',
+      });
+      await fs.writeFile(creditImagePath, blankCreditBuffer);
+    } else {
+      const creditText = credit.startsWith('Credit: ') ? credit : `Credit: ${credit}`;
+      const creditImageBuffer = await createTextImage({ 
+        text: creditText, 
+        width: creditPosition.width, // Use manual positioning width
+        fontSize: creditFontSize, 
+        fontColor: creditColor, 
+        fontFamily: creditsFontFamily,
+        textAlign: 'left', // Credits are left-aligned like in Python
+        fontWeight: creditBold ? 'bold' : 'normal',
+        fontStyle: creditItalic ? 'italic' : 'normal',
+      });
+      await fs.writeFile(creditImagePath, creditImageBuffer);
+    }
+    
+    // --- 2. Download video using pytubefix ---
+    console.log('Starting video download using pytubefix in 1080p...');
+    const downloadedVideoPath = path.join(tempDir, 'downloaded_video.mp4');
+    
+    // Call Python script to download video with pytubefix
+    const downloadResult = await downloadVideoWithPytubefix(youtubeUrl, startTime, endTime, downloadedVideoPath);
+    
+    if (!downloadResult.success) {
+      throw new Error(`Video download failed: ${downloadResult.error}`);
+    }
+    
+    console.log(`Video downloaded successfully in ${downloadResult.resolution || 'highest available'} quality`);
 
-    // Add more detailed logging
-    console.log('Video download result:', downloadResult);
+    // Verify the downloaded video has audio streams
+    console.log('Verifying downloaded video has audio...');
+    try {
+      const ffprobeResult = await new Promise<string>((resolve, reject) => {
+        const ffprobe = spawn('ffprobe', [
+          '-v', 'quiet',
+          '-print_format', 'json',
+          '-show_streams',
+          downloadedVideoPath
+        ]);
+        
+        let output = '';
+        ffprobe.stdout.on('data', (data) => output += data);
+        ffprobe.on('close', (code) => {
+          if (code === 0) resolve(output);
+          else reject(new Error(`ffprobe failed with code ${code}`));
+        });
+      });
+      
+      const streams = JSON.parse(ffprobeResult);
+      const hasAudio = streams.streams?.some((stream: any) => stream.codec_type === 'audio');
+      const hasVideo = streams.streams?.some((stream: any) => stream.codec_type === 'video');
+      
+      console.log(`Downloaded video analysis: Video=${hasVideo}, Audio=${hasAudio}`);
+      if (!hasAudio) {
+        console.warn('WARNING: Downloaded video has no audio stream!');
+      }
+    } catch (error) {
+      console.warn('Could not analyze downloaded video streams:', error);
+    }
 
-    // Return the download result
-    return NextResponse.json(downloadResult);
-  } catch (error) {
-    console.error('Video generation error:', error);
+    // --- 3. Process with FFmpeg using image overlays ---
+    console.log('Starting FFmpeg processing...');
+    await new Promise<void>((resolve, reject) => {
+      const duration = endTime - startTime;
+      const videoProcessing = getVideoProcessing(aspectRatio);
+      
+      // Build filter components separately
+      const filters = [];
+      
+      // 1. Crop and scale video based on aspect ratio
+      filters.push(`[0:v]${videoProcessing.crop},${videoProcessing.scale},setsar=1[processed_video_base]`);
+      
+      // 2. Create background with custom color and dynamic size
+      filters.push(`color=c=${canvasBackgroundColor.replace('#', '')}:s=${canvasDimensions.width}x${canvasDimensions.height}:d=${duration}[bg]`);
+
+      // Calculate video position (centered)
+      const videoWidth = parseInt(videoProcessing.scale.split(':')[1]) || canvasDimensions.width;
+      const videoHeight = parseInt(videoProcessing.scale.split(':')[1]) || parseInt(videoProcessing.scale.split(':')[0]);
+      const videoYPosition = (canvasDimensions.height - videoHeight) / 2;
+      
+      // Use manual positioning for text elements
+      const titleYPosition = titlePosition.y;
+      const creditYPosition = creditPosition.y;
+      
+      // For captions, calculate MarginV (distance from bottom)
+      // MarginV is the distance from the bottom of the video to the baseline of the text
+      const captionCenterY = captionPosition.y + (captionPosition.height / 2);
+      const captionMarginV = Math.max(0, canvasDimensions.height - captionCenterY);
+
+      // 3. Burn subtitles directly onto the processed video if they exist
+      if (captions && captions.length > 0) {
+        // Escape the subtitle file path and format the style properly
+        const subtitleFilter = `[processed_video_base]subtitles='${srtPath.replace(/'/g, "\\'")}'`;
+        const fontName = captionFontFamily.replace(/'/g, "\\'");
+        const primaryColor = captionColor.replace('#', '&H');
+        const outlineColor = captionStrokeColor.replace('#', '&H');
+        // Use manual caption positioning
+        const marginV = captionMarginV;
+        const style = `:force_style='FontName=${fontName},FontSize=${captionFontSize},PrimaryColour=${primaryColor},BorderStyle=3,OutlineColour=${outlineColor},Outline=${captionStrokeWidth},Alignment=2,MarginV=${marginV}'`;
+        filters.push(`${subtitleFilter}${style}[processed_video_with_subs]`);
+      } else {
+        filters.push('[processed_video_base]null[processed_video_with_subs]');
+      }
+
+      // 4. Overlay video on background (centered)
+      filters.push(`[bg][processed_video_with_subs]overlay=(W-w)/2:${videoYPosition}[base]`);
+      
+      // 5. Overlay title image with manual positioning
+      filters.push(`[base][1:v]overlay=${titlePosition.x}:${titleYPosition}[with_title]`);
+      
+      // 6. Overlay credit image with manual positioning
+      filters.push(`[with_title][2:v]overlay=${creditPosition.x}:${creditYPosition}[final_video]`);
+      
+      // 7. Copy audio stream from input 0 (downloaded video)
+      filters.push(`[0:a]acopy[final_audio]`);
+      
+      // Join all filters with semicolons
+      const filterchain = filters.join(';');
+      
+      console.log('FFmpeg filter chain:', filterchain);
+      
+      const command = ffmpeg()
+        .input(downloadedVideoPath) // Input 0: Video (downloaded via pytubefix)
+        .input(titleImagePath)  // Input 1: Title Image
+        .input(creditImagePath) // Input 2: Credit Image
+        .complexFilter(filterchain, ['final_video', 'final_audio'])
+        .outputOptions([
+          '-c:a', 'aac',             // Encode audio as AAC
+          '-c:v', 'libx264'          // Encode video as H.264
+        ])
+        .toFormat('mp4');
+
+      command
+        .on('start', (commandLine: string) => {
+          console.log('FFmpeg command started:', commandLine);
+        })
+        .on('progress', (progress: { percent?: number }) => {
+          console.log('FFmpeg progress:', progress.percent + '% done');
+        })
+        .on('end', () => {
+          console.log('FFmpeg processing completed successfully');
+          resolve();
+        })
+        .on('error', (err: Error) => {
+          console.error('FFmpeg error:', err.message);
+          reject(new Error(`FFmpeg error: ${err.message}`));
+        })
+        .save(outputPath);
+    });
+    
+    console.log('Video generation completed:', finalVideoName);
+    
+    // Clean up temp directory after successful generation
+    cleanupDone = true;
+    try { 
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } catch(err){
+      console.error(`Failed to clean up temp directory ${tempDir}:`, err);
+    }
+    
     return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+      success: true,
+      videoUrl: `/videos/${finalVideoName}`
+    });
+
+  } catch (error) {
+    console.error('Error generating video:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return NextResponse.json(
+      { error: 'Failed to generate video', details: errorMessage },
+      { status: 500 }
+    );
   } finally {
-    // Optional: Add cleanup logic if needed
-    if (!cleanupDone) {
-      try {
+    // Only clean up if we haven't already done so
+    if (!cleanupDone && tempDir) {
+      try { 
         await fs.rm(tempDir, { recursive: true, force: true });
-      } catch (cleanupError) {
-        console.error('Cleanup error:', cleanupError);
+      } catch(err){
+        console.error(`Failed to clean up temp directory ${tempDir}:`, err);
       }
     }
   }

@@ -199,37 +199,34 @@ export function VideoPlayer({ clip, settings, onSettingsChange }: VideoPlayerPro
       try {
         const time = playerRef.current.getCurrentTime();
         if (!isNaN(time)) {
-          // Adjust time relative to clip start
-          const relativeTime = time - clip.start;
-          
           setPlayerCurrentTime(time);
           
-          // Only update the settings time if it's significantly different
+          // Only update the settings time if it's significantly different (to reduce updates)
           if (Math.abs(time - playbackSettings.currentTime) > 0.5) {
+            // Only update currentTime, not aspectRatio
             onSettingsChange({
               currentTime: time,
             });
           }
 
-          // Find active caption with precise timing
+          // Find and set the active caption with improved timing accuracy
           const currentCaption = clip.captions?.find(c => {
-            const startTime = timeToSeconds(c.start) - clip.start;
-            const endTime = timeToSeconds(c.end) - clip.start;
-            const tolerance = 0.1; // 100ms tolerance
-            
-            return relativeTime >= (startTime - tolerance) && 
-                   relativeTime <= (endTime + tolerance);
+            const startTime = timeToSeconds(c.start);
+            const endTime = timeToSeconds(c.end);
+            // Add small tolerance for better synchronization (100ms)
+            const tolerance = 0.1;
+            return time >= (startTime - tolerance) && time <= (endTime + tolerance);
           });
           
-          // Update active caption
+          // Only update if caption has changed to avoid unnecessary re-renders
           const newCaption = currentCaption?.text || '';
           if (newCaption !== activeCaption) {
             setActiveCaption(newCaption);
           }
         }
 
-        // Existing end of clip logic remains the same
         if (time >= clip.end) {
+          // Directly apply the reset logic here to avoid dependency issues
           playerRef.current.seekTo(clip.start, true);
           playerRef.current.pauseVideo();
           setPlayerCurrentTime(clip.start);
