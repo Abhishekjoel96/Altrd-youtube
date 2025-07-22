@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with the YouTube Clip Edit Tool repository.
 
 ## Development Commands
 
@@ -30,12 +30,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Canvas**: HTML5 Canvas API for text overlay generation
 
 ### Core Functionality
-This is a YouTube video repurposing application that allows users to:
+The YouTube Clip Edit Tool is a modern video repurposing application that allows users to:
 1. Input YouTube URLs and load videos using the YouTube Iframe API
 2. Select time segments with an interactive range slider
-3. Generate captions using AI transcription services
-4. Create clips with customizable titles, captions, and credits
-5. Export videos in multiple aspect ratios (9:16, 16:9, 1:1, 4:5, 3:4)
+3. Generate captions using AI transcription services (OpenAI + Google Generative AI)
+4. Create clips with customizable titles, captions, and credits using canvas-based overlays
+5. Export videos in multiple aspect ratios optimized for social media platforms:
+   - 9:16 (TikTok/Instagram Reels): 1080x1920
+   - 16:9 (YouTube): 1920x1080
+   - 1:1 (Instagram): 1080x1080
+   - 4:5 (Instagram Story): 1080x1350
+   - 3:4 (Portrait): 1080x1440
 
 ### Key Components Architecture
 
@@ -75,12 +80,14 @@ This is a YouTube video repurposing application that allows users to:
 - Subtitle burning with customizable styling and positioning
 
 #### Aspect Ratio Handling
-The application supports multiple output formats with intelligent video scaling:
-- 9:16 (vertical/TikTok): 1080x1920
-- 16:9 (horizontal/YouTube): 1920x1080  
-- 1:1 (square/Instagram): 1080x1080
-- 4:5 (Instagram Story): 1080x1350
-- 3:4 (Portrait): 1080x1440
+The application supports multiple output formats with intelligent video scaling and positioning:
+- **9:16 (TikTok/Reels)**: 1080x1920 - Vertical format optimized for mobile viewing
+- **16:9 (YouTube)**: 1920x1080 - Standard widescreen format
+- **1:1 (Instagram)**: 1080x1080 - Square format for Instagram posts
+- **4:5 (Instagram Story)**: 1080x1350 - Optimized for Instagram Stories
+- **3:4 (Portrait)**: 1080x1440 - Portrait orientation for various platforms
+
+Each format includes intelligent video positioning, scaling, and text overlay placement to ensure optimal visual composition.
 
 ## File Structure Notes
 
@@ -126,9 +133,17 @@ Complex video processing uses multi-input FFmpeg commands with filter graphs for
 - Subtitle burning with custom styling
 - Audio stream preservation
 
-### Testing
-No specific test framework is configured. Testing should focus on:
-- Video download functionality
-- FFmpeg processing pipeline
-- API endpoint responses
-- UI component interactions
+### Testing and Quality Assurance
+No specific test framework is currently configured. When implementing tests, focus on:
+- Video download functionality with various YouTube URLs
+- FFmpeg processing pipeline and filter chain validation
+- API endpoint responses and error handling
+- UI component interactions and form validation
+- Python script integration and error handling
+- Canvas text overlay generation accuracy
+
+### Deployment Notes
+- Ensure FFmpeg is available in the deployment environment
+- Python virtual environment must be properly configured with UV
+- Environment variables for OpenAI and Google AI API keys required
+- Consider memory and processing limits for video operations

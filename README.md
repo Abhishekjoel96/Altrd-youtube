@@ -1,90 +1,120 @@
-# 🛠️ YouTube Repurpose Web App
+# 🎬 YouTube Clip Edit Tool
 
-## 🚀 Enhanced Video Download with pytubefix
+A modern YouTube video repurposing application built with Next.js, Bun, and Python. Create engaging clips with AI-powered transcription, customizable text overlays, and multi-format export capabilities.
 
-### 🎥 Key Download Features
-- **1080p High-Quality Downloads**
-- **Intelligent Stream Selection**
-- **Adaptive Streaming Support**
-- **Robust Error Handling**
-- **Detailed Logging**
+## ✨ Features
 
-### 📦 Prerequisites
-- Python 3.8+
-- FFmpeg
-- Node.js
-- pip
+- **YouTube Video Integration**: Load videos directly from YouTube URLs using the YouTube Iframe API
+- **Interactive Timeline**: Select precise time segments with an intuitive range slider
+- **AI-Powered Captions**: Automatic transcription using OpenAI and Google Generative AI
+- **Custom Text Overlays**: Add titles, captions, and credits with configurable styling
+- **Multi-Format Export**: Support for 9:16, 16:9, 1:1, 4:5, and 3:4 aspect ratios
+- **High-Quality Processing**: 1080p downloads with intelligent stream selection
+- **Modern UI**: Built with React 19, TailwindCSS 4, and Radix UI components
 
-### 🔧 Installation Steps
+## 🛠️ Tech Stack
 
-#### 1. Install Python Dependencies
+- **Frontend**: Next.js 15.3.5, React 19, TypeScript, TailwindCSS 4
+- **Backend**: Node.js with Bun runtime
+- **Video Processing**: FFmpeg, pytubefix, fluent-ffmpeg
+- **AI Services**: OpenAI API, Google Generative AI
+- **UI Components**: Radix UI primitives
+- **Python Environment**: UV package manager
+
+## 📦 Prerequisites
+
+- **Node.js** (latest LTS)
+- **Bun** (JavaScript runtime and package manager)
+- **Python 3.8+**
+- **UV** (Python package manager): `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **FFmpeg** (for video processing)
+
+## 🚀 Installation
+
+### 1. Clone and Install Dependencies
 ```bash
-pip3 install pytubefix
+git clone <repository-url>
+cd clip-edit-tool
+
+# Install Node.js dependencies with Bun
+bun install
+
+# Setup Python virtual environment and dependencies
+uv venv
+uv pip install pytubefix
 ```
 
-#### 2. Install Node.js Dependencies
+### 2. Environment Setup
+Ensure FFmpeg is installed and accessible in your PATH:
 ```bash
-   npm install
-   ```
+# macOS
+brew install ffmpeg
 
-### 🌟 Download Capabilities
+# Ubuntu/Debian
+sudo apt update && sudo apt install ffmpeg
 
-#### Stream Selection Strategy
-- Prioritizes 1080p DASH streams
-- Fallback to highest available quality
-- Separate audio and video stream handling
-- Intelligent resolution and bitrate selection
+# Windows
+# Download from https://ffmpeg.org/download.html
+```
 
-#### Logging and Monitoring
-- Comprehensive logging to `/tmp/pytubefix_download.log`
-- Detailed error tracking
-- Performance metrics
+## 🏃 Development
+
+### Available Scripts
+```bash
+# Start development server with Turbo
+bun dev
+
+# Build for production
+bun run build
+
+# Start production server
+bun start
+
+# Run linting
+bun run lint
+```
 
 ### 🔍 How It Works
 
-1. **Stream Analysis**
-   - Examines available video streams
-   - Selects optimal 1080p stream
-   - Handles both progressive and adaptive streams
+1. **Video Processing Pipeline**
+   - YouTube URL parsing and video loading via YouTube Iframe API
+   - High-quality video download using pytubefix with intelligent stream selection
+   - FFmpeg-powered video clipping with precise timestamps
 
-2. **Audio-Video Processing**
-   - Separate high-quality audio and video streams
-   - Uses FFmpeg for precise merging
-   - Supports clipping with frame-accurate timestamps
+2. **AI-Powered Transcription**
+   - Automatic caption generation using OpenAI and Google Generative AI
+   - SRT subtitle format with timestamp synchronization
+   - Subtitle burning with customizable styling
 
-3. **Error Resilience**
-   - Multiple fallback mechanisms
-   - Graceful degradation if high-quality streams unavailable
+3. **Multi-Format Export**
+   - Canvas-based text overlay generation
+   - Complex FFmpeg filter chains for aspect ratio conversion
+   - Support for multiple social media formats (TikTok, YouTube, Instagram)
 
-### 🛠️ Customization
+### 🏗️ Architecture
 
-Modify `scripts/download_video.py` to adjust:
-- Target resolution
-- Bitrate preferences
-- Logging verbosity
+- **Frontend**: Tab-based interface with real-time video preview
+- **API Routes**: `/api/generate-video`, `/api/transcribe`, `/api/test-timing`
+- **Python Scripts**: `scripts/download_video.py` for YouTube video handling
+- **Virtual Environment**: UV-managed Python dependencies in `.venv/`
 
-### 🔒 Security
-- OAuth support (optional)
-- Secure stream selection
-- Temporary file management
+### 📁 Key Files
 
-### 📊 Performance Metrics
-- Minimal overhead
-- Efficient stream filtering
-- Low memory footprint
+- `src/app/page.tsx` - Main application interface
+- `src/components/YouTubeClipper.tsx` - Core video clipping component
+- `src/app/api/generate-video/route.ts` - Video processing API
+- `scripts/download_video.py` - YouTube download script
+- `pyproject.toml` - Python dependencies configuration
 
-### 🌐 Compatibility
-- YouTube video formats
-- Multiple resolutions
-- Various codec support
+### 🐛 Troubleshooting
 
-### 🆘 Troubleshooting
-- Check `/tmp/pytubefix_download.log` for detailed logs
-- Ensure FFmpeg is installed
-- Verify Python and pip configurations
+- **FFmpeg Issues**: Ensure FFmpeg is installed and in your PATH
+- **Python Environment**: Check `.venv/` directory exists and pytubefix is installed
+- **Video Downloads**: Check `/tmp/pytubefix_download.log` for detailed logs
+- **Development**: Use `bun dev` with Turbo for fast refresh during development
 
 ### 📝 License
 MIT License
 
 ### 🤝 Contributing
-Pull requests welcome! Please read our contribution guidelines.
+Pull requests welcome! Please ensure all tests pass and follow the existing code style.

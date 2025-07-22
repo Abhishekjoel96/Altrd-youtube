@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  clip-edit-tool:
+    build: .
+    platform: linux/amd64
+    ports:
+      - "3000:3000"
+    environment:
+      # Load from .env file
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      # Add other common environment variables
+      - NODE_ENV=production
+      - PORT=3000
+    env_file:
+      - .env
+    volumes:
+      # Persistent storage for generated videos
+      - ./public/videos:/app/public/videos
+      # Temporary video processing directory
+      - video_temp:/tmp/videos
+      # Mount scripts directory for Python video processing
+      - ./scripts:/app/scripts:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  video_temp:
+    driver: local
