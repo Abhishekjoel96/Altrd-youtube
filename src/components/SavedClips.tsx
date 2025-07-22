@@ -14,12 +14,14 @@ import {
 import { Trash2, Save, Edit, Pencil } from "lucide-react";
 import { VideoPlayer } from "./video/VideoPlayer";
 import { VideoSettings } from "./video/VideoSettings";
+import { TextStylingSettings } from "./video/TextStylingSettings";
 import { ClipSettings } from "./video/types";
 import { formatTime } from "./video/utils";
 import { toast } from "sonner";
 import { WebhookUrlModal } from "./WebhookUrlModal";
 import { getWebhookUrl, saveWebhookUrl } from "@/lib/webhookStore";
 import { Textarea } from "./ui/textarea";
+import Image from "next/image";
 // import { DateTimePicker } from "./ui/datetime-picker";
 
 interface SavedClipsProps {
@@ -41,6 +43,8 @@ export default function SavedClips({ clips, onRemoveClip, onUpdateClip, onSwitch
   const [editedTranscription, setEditedTranscription] = useState<string>('');
   const [generatingClipId, setGeneratingClipId] = useState<string | null>(null);
   const [generatedVideoUrls, setGeneratedVideoUrls] = useState<Record<string, string>>({});
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  const [showClipsList, setShowClipsList] = useState(true);
 
   // Only initialize on the client side
   useEffect(() => {
@@ -54,7 +58,7 @@ export default function SavedClips({ clips, onRemoveClip, onUpdateClip, onSwitch
     });
     
     setClipSettings(initialSettings);
-  }, []);
+  }, [clips]);
 
 
 
@@ -460,13 +464,15 @@ export default function SavedClips({ clips, onRemoveClip, onUpdateClip, onSwitch
   if (clips.length === 0) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-bold mb-4">My Clips</h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
-          You haven't saved any clips yet. Go to the YouTube Clipper tab to create and save clips.
+        <h2 className="text-2xl font-bold mb-4">Editor</h2>
+        <p className="text-base text-gray-600 dark:text-gray-400 mb-6">
+          You haven&apos;t saved any clips yet. Go to the YouTube Clipper tab to create and save clips.
         </p>
       </div>
     );
   }
+
+  const selectedClip = selectedClipId ? clips.find(c => c.id === selectedClipId) : null;
 
   return (
     <div>
@@ -482,165 +488,223 @@ export default function SavedClips({ clips, onRemoveClip, onUpdateClip, onSwitch
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold mb-2">My Clips</h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Customize and preview your saved clips.
+          <h2 className="text-2xl font-bold mb-2">Editor</h2>
+          <p className="text-base text-gray-600 dark:text-gray-400">
+            Select a clip to edit and customize.
           </p>
-        </div>
-        {/* Presets Dropdown for captions/title/credits */}
-        <div className="flex items-center gap-2">
-          <label className="font-medium">Preset:</label>
-          <select
-            value={preset}
-            onChange={e => {
-              setPreset(e.target.value);
-              applyPresetToAllClips(e.target.value);
-            }}
-            className="rounded border px-2 py-1"
-          >
-            <option value="Custom">Custom</option>
-            <option value="101xFounders">101xFounders</option>
-            <option value="IndianFoundersco">IndianFoundersco</option>
-            <option value="BIP">BIP</option>
-            <option value="Lumen Links">Lumen Links</option>
-            <option value="GoodClipsMatter">GoodClipsMatter</option>
-            <option value="JabWeWatched">JabWeWatched</option>
-          </select>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        {clips.map((clip) => {
-          const settings = getSettings(clip.id);
-
-          return (
-            <Card key={clip.id} className="bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-[#333333]">
-              <CardHeader className="p-4 pb-2">
-                <CardTitle className="text-lg">{clip.title}</CardTitle>
-                <CardDescription className="text-gray-500 dark:text-gray-400">
-                  {formatTime(clip.start)} - {formatTime(clip.end)}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 pt-2">
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="w-full md:w-1/2">
-                  {mounted && (
-                      <VideoPlayer 
-                        clip={clip} 
-                        settings={settings}
-                        onSettingsChange={(updates) => updateSettings(clip.id, updates)}
+      <div className="space-y-6">
+        {/* Clips Section - Collapsible */}
+        <div className="bg-gray-50 dark:bg-[#1E1E1E] rounded-lg border border-gray-200 dark:border-[#333333]">
+          <div className="p-4 border-b border-gray-200 dark:border-[#333333]">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold">Clips ({clips.length})</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowClipsList(!showClipsList)}
+              >
+                {showClipsList ? 'Collapse' : 'Expand'}
+              </Button>
+            </div>
+          </div>
+          
+          {showClipsList && (
+            <div className="p-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {clips.map((clip) => (
+                  <div
+                    key={clip.id}
+                    onClick={() => {
+                      setSelectedClipId(clip.id);
+                      setShowClipsList(false);
+                    }}
+                    className={`rounded-lg border cursor-pointer transition-all hover:scale-105 overflow-hidden ${
+                      selectedClipId === clip.id
+                        ? 'border-[#7C3AED] bg-[#7C3AED]/5'
+                        : 'border-gray-200 dark:border-[#333333] bg-white dark:bg-[#2A2A2A] hover:border-[#7C3AED]/50'
+                    }`}
+                  >
+                    {/* Thumbnail - Full width at top */}
+                    <div className="relative w-full aspect-video">
+                      <Image
+                        src={clip.thumbnail}
+                        alt={clip.title}
+                        fill
+                        className="object-cover"
                       />
-                    )}
+                    </div>
+                    
+                    {/* Content below thumbnail */}
+                    <div className="p-3 space-y-1">
+                      <h4 className="font-medium text-sm leading-tight line-clamp-2">{clip.title}</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatTime(clip.start)} - {formatTime(clip.end)}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Duration: {formatTime(clip.end - clip.start)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="w-full md:w-1/2">
-                      <div className="space-y-2">
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center">
-                          <Pencil className="h-4 w-4 mr-2" /> Auto-Generated Transcription
-                          </label>
-                        <div className="flex gap-2">
-                          {editingClipId === clip.id ? (
-                            <Button
-                              size="sm"
-                              onClick={() => handleSaveTranscription(clip.id)}
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                              <Save className="h-4 w-4 mr-1" />
-                              Save
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleStartEditing(clip)}
-                            >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Edit
-                            </Button>
-                          )}
-                        </div>
-                            </div>
-                      <div className="h-96 overflow-y-auto p-4 bg-gray-50 dark:bg-[#252525] rounded-lg border border-gray-200 dark:border-[#333333]">
-                        {editingClipId === clip.id ? (
-                          <textarea
-                            value={editedTranscription}
-                            onChange={(e) => setEditedTranscription(e.target.value)}
-                            className="w-full h-full bg-transparent border-none outline-none text-sm text-gray-800 dark:text-gray-200 leading-relaxed resize-none"
-                            autoFocus
-                          />
-                        ) : (
-                          <>
-                            {clip.captions && clip.captions.length > 0 ? (
-                              <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
-                                {clip.captions.map((caption) => caption.text).join(' ')}
-                              </p>
-                            ) : (
-                              <div className="flex items-center justify-center h-full">
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                  No transcription available for this clip.
-                                </p>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                              </div>
-                            </div>
-                          </div>
-                <div className="flex flex-col gap-6 mt-6">
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Editor Section - Two Screens */}
+        {selectedClip && (
+          <div className="space-y-6">
+            {/* First Screen - Captions and Preview */}
+            <div className="bg-gray-50 dark:bg-[#1E1E1E] rounded-lg border border-gray-200 dark:border-[#333333] p-6">
+              <h3 className="text-xl font-semibold mb-4">Preview & Captions</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
                   {mounted && (
-                    <>
-                      <VideoSettings
-                        clipId={clip.id}
-                        clip={clip}
-                        settings={settings}
-                        onSettingsChange={(updates) => updateSettings(clip.id, updates)}
-                      />
-
-                      {/* Generate Video Button */}
-                      <div className="mt-6">
-                          <Button
-                          onClick={() => handleGenerateVideo(clip)}
-                          disabled={generatingClipId === clip.id}
-                          className="w-full bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          {generatingClipId === clip.id ? 'Generating Video...' : 'Generate Video with All Elements'}
-                          </Button>
-                      </div>
-
-                      {/* Display Generated Video */}
-                      {generatedVideoUrls[clip.id] && (
-                        <div className="mt-4">
-                           <h4 className="font-semibold mb-2">Generated Video:</h4>
-                           <video src={generatedVideoUrls[clip.id]} controls className="w-full rounded-lg"></video>
-                           <a href={generatedVideoUrls[clip.id]} download={`clip-${clip.title}.mp4`} className="text-blue-500 hover:underline mt-2 inline-block">
-                             Download Video
-                           </a>
-                        </div>
-                      )}
-
-
-                    </>
+                    <VideoPlayer 
+                      clip={selectedClip} 
+                      settings={getSettings(selectedClip.id)}
+                      onSettingsChange={(updates) => updateSettings(selectedClip.id, updates)}
+                    />
                   )}
                 </div>
-              </CardContent>
-              <CardFooter className="p-4 pt-0">
-                <div className="flex gap-2">
-                  {/* Edit button removed as per new requirements */}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-red-500 border-red-500 hover:bg-red-100 dark:hover:bg-red-900"
-                    onClick={() => onRemoveClip(clip.id)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Remove
-                  </Button>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium flex items-center">
+                      <Pencil className="h-4 w-4 mr-2" /> Auto-Generated Transcription
+                    </label>
+                    <div className="flex gap-2">
+                      {editingClipId === selectedClip.id ? (
+                        <Button
+                          size="sm"
+                          onClick={() => handleSaveTranscription(selectedClip.id)}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <Save className="h-4 w-4 mr-1" />
+                          Save
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleStartEditing(selectedClip)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-64 overflow-y-auto p-4 bg-white dark:bg-[#2A2A2A] rounded-lg border border-gray-200 dark:border-[#333333]">
+                    {editingClipId === selectedClip.id ? (
+                      <textarea
+                        value={editedTranscription}
+                        onChange={(e) => setEditedTranscription(e.target.value)}
+                        className="w-full h-full bg-transparent border-none outline-none text-sm text-gray-800 dark:text-gray-200 leading-relaxed resize-none"
+                        autoFocus
+                      />
+                    ) : (
+                      <>
+                        {selectedClip.captions && selectedClip.captions.length > 0 ? (
+                          <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+                            {selectedClip.captions.map((caption) => caption.text).join(' ')}
+                          </p>
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              No transcription available for this clip.
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </CardFooter>
-            </Card>
-          );
-        })}
+              </div>
+            </div>
+
+            {/* Second Screen - Settings and Generate */}
+            <div className="bg-gray-50 dark:bg-[#1E1E1E] rounded-lg border border-gray-200 dark:border-[#333333] p-6">
+              <h3 className="text-xl font-semibold mb-4">Video Settings</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium mb-3">Positioning & Layout</h4>
+                  {mounted && (
+                    <VideoSettings
+                      clipId={selectedClip.id}
+                      clip={selectedClip}
+                      settings={getSettings(selectedClip.id)}
+                      onSettingsChange={(updates) => updateSettings(selectedClip.id, updates)}
+                    />
+                  )}
+                </div>
+                <div className="space-y-6">
+                  {mounted && (
+                    <TextStylingSettings
+                      clipId={selectedClip.id}
+                      clip={selectedClip}
+                      settings={getSettings(selectedClip.id)}
+                      onSettingsChange={(updates) => updateSettings(selectedClip.id, updates)}
+                      preset={preset}
+                      onPresetChange={(newPreset) => {
+                        setPreset(newPreset);
+                        applyPresetToAllClips(newPreset);
+                      }}
+                    />
+                  )}
+                  
+                  <div className="space-y-4">
+                    {/* Generate Button */}
+                    <Button
+                      onClick={() => handleGenerateVideo(selectedClip)}
+                      disabled={generatingClipId === selectedClip.id}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white py-3"
+                    >
+                      {generatingClipId === selectedClip.id ? 'Generating Video...' : 'Generate Video'}
+                    </Button>
+
+                    {/* Generated Video Display */}
+                    {generatedVideoUrls[selectedClip.id] && (
+                      <div className="mt-4">
+                        <h4 className="font-semibold mb-2">Generated Video:</h4>
+                        <video src={generatedVideoUrls[selectedClip.id]} controls className="w-full rounded-lg max-h-64"></video>
+                        <div className="flex gap-2 mt-2">
+                          <a 
+                            href={generatedVideoUrls[selectedClip.id]} 
+                            download={`clip-${selectedClip.title}.mp4`} 
+                            className="text-blue-500 hover:underline"
+                          >
+                            Download Video
+                          </a>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-500 border-red-500 hover:bg-red-100 dark:hover:bg-red-900 ml-auto"
+                            onClick={() => onRemoveClip(selectedClip.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Remove Clip
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!selectedClip && (
+          <div className="text-center py-12 bg-gray-50 dark:bg-[#1E1E1E] rounded-lg border-2 border-dashed border-gray-300 dark:border-[#333333]">
+            <h3 className="text-xl font-semibold mb-2">Select a Clip to Edit</h3>
+            <p className="text-base text-gray-600 dark:text-gray-400">
+              Choose a clip from the list above to start editing and customizing.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -197,6 +197,10 @@ export function VideoPlayer({ clip, settings, onSettingsChange }: VideoPlayerPro
       if (!playerRef.current || !playerReady || isSeeking.current) return;
 
       try {
+        // Check if getCurrentTime method exists before calling it
+        if (typeof playerRef.current.getCurrentTime !== 'function') {
+          return;
+        }
         const time = playerRef.current.getCurrentTime();
         if (!isNaN(time)) {
           setPlayerCurrentTime(time);

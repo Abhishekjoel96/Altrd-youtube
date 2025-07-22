@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 import { useDropzone } from "react-dropzone";
 import Image from "next/image";
@@ -14,11 +14,14 @@ interface ImageUploaderProps {
 
 export default function ImageUploader({ name, maxImages = 6 }: ImageUploaderProps) {
   const { setValue, watch } = useFormContext();
-  const images = watch(name) || [];
+  const watchedImages = watch(name);
+  const images = useMemo(() => watchedImages || [], [watchedImages]);
+
+  const memoizedImages = useMemo(() => images, [images]);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      const newFiles = [...images];
+      const newFiles = [...memoizedImages];
       acceptedFiles.forEach((file) => {
         if (newFiles.length < maxImages) {
           newFiles.push(file);
@@ -26,7 +29,7 @@ export default function ImageUploader({ name, maxImages = 6 }: ImageUploaderProp
       });
       setValue(name, newFiles, { shouldValidate: true });
     },
-    [images, setValue, name, maxImages]
+    [memoizedImages, setValue, name, maxImages]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

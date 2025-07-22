@@ -15,8 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Altrd Youtube Clipper",
+  title: "YouTube Clipper",
   description: "YouTube clip generation and content repurposing tool",
+  icons: {
+    icon: "https://cdn-icons-png.flaticon.com/512/922/922672.png",
+    shortcut: "https://cdn-icons-png.flaticon.com/512/922/922672.png",
+    apple: "https://cdn-icons-png.flaticon.com/512/922/922672.png",
+  },
 };
 
 export default function RootLayout({

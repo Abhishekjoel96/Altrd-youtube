@@ -64,82 +64,85 @@ export default function Home() {
   );
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#121212] text-black dark:text-white">
-      {/* Header section */}
-      <header className="bg-gray-50 dark:bg-[#121212] py-4 px-6 border-b border-gray-200 dark:border-[#333333] flex items-center justify-between">
-        <div className="flex items-center">
-          <div className="bg-[#7C3AED] text-white h-10 w-10 flex items-center justify-center rounded-md mr-2">
-            <Package className="h-6 w-6" />
+    <div className="min-h-screen bg-white dark:bg-[#121212] text-black dark:text-white flex">
+      {/* Vertical Sidebar Navigation */}
+      <div className="w-64 bg-gray-50 dark:bg-[#1E1E1E] border-r border-gray-200 dark:border-[#333333] flex flex-col">
+        {/* Header section in sidebar */}
+        <header className="p-4 border-b border-gray-200 dark:border-[#333333]">
+          <div className="flex items-center">
+            <img 
+              src="https://cdn-icons-png.flaticon.com/512/922/922672.png" 
+              alt="YouTube Clipper"
+              className="h-8 w-8 mr-2"
+            />
+            <h1 className="text-lg font-bold">YouTube Clipper</h1>
           </div>
-          <h1 className="text-xl font-bold">Altrd Youtube Clipper</h1>
-        </div>
-        <ThemeToggle />
-      </header>
+        </header>
 
-      {/* Tab navigation */}
-      <div className="border-b border-gray-200 dark:border-[#333333]">
-        <div className="flex max-w-4xl mx-auto">
+        {/* Navigation Menu */}
+        <nav className="flex-1 py-4">
           <button
             onClick={() => setActiveTab("clipper")}
-            className={`px-6 py-3 font-medium text-sm ${
+            className={`w-full px-4 py-3 text-left font-medium text-sm flex items-center hover:bg-gray-100 dark:hover:bg-[#252525] ${
               activeTab === "clipper"
-                ? "border-b-2 border-[#7C3AED] text-[#7C3AED]"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                ? "bg-[#7C3AED]/10 text-[#7C3AED] border-r-2 border-[#7C3AED]"
+                : "text-gray-600 dark:text-gray-400"
             }`}
           >
             YouTube Clipper
           </button>
           <button
             onClick={() => setActiveTab("saved")}
-            className={`px-6 py-3 font-medium text-sm ${
+            className={`w-full px-4 py-3 text-left font-medium text-sm flex items-center justify-between hover:bg-gray-100 dark:hover:bg-[#252525] ${
               activeTab === "saved"
-                ? "border-b-2 border-[#7C3AED] text-[#7C3AED]"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                ? "bg-[#7C3AED]/10 text-[#7C3AED] border-r-2 border-[#7C3AED]"
+                : "text-gray-600 dark:text-gray-400"
             }`}
           >
-            My Clips ({savedClips.length})
+            <span>Editor</span>
+            <span className="text-xs bg-gray-200 dark:bg-[#333333] px-2 py-1 rounded">{savedClips.length}</span>
           </button>
           <button
             onClick={() => setActiveTab("save")}
-            className={`px-6 py-3 font-medium text-sm ${
+            className={`w-full px-4 py-3 text-left font-medium text-sm flex items-center justify-between hover:bg-gray-100 dark:hover:bg-[#252525] ${
               activeTab === "save"
-                ? "border-b-2 border-[#7C3AED] text-[#7C3AED]"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                ? "bg-[#7C3AED]/10 text-[#7C3AED] border-r-2 border-[#7C3AED]"
+                : "text-gray-600 dark:text-gray-400"
             }`}
           >
-            Save Clips ({clipsWithVideos.length})
+            <span>Generated Videos</span>
+            <span className="text-xs bg-gray-200 dark:bg-[#333333] px-2 py-1 rounded">{clipsWithVideos.length}</span>
           </button>
+        </nav>
+
+        {/* Theme Toggle */}
+        <div className="p-4">
+          <ThemeToggle />
+        </div>
+
+        {/* Branding Footer - Fixed to bottom */}
+        <div className="p-4 border-t border-gray-200 dark:border-[#333333]">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+            built with ❤️ by altrd
+          </p>
         </div>
       </div>
 
       {/* Main content area */}
-      <div className="p-8">
-        {/* Hero section */}
-        {!videoLoaded && activeTab === "clipper" && (
-          <div className="bg-gray-50 dark:bg-[#1E1E1E] rounded-lg p-8 mb-8 text-center">
-            <h2 className="text-4xl font-bold mb-4">
-              Build, share and <span className="text-[#7C3AED]">monetize</span>
-            </h2>
-            <h3 className="text-4xl font-bold mb-6">YouTube Content</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-2xl mx-auto">
-              Automated clip generation, shareable links and scheduling for creators.
-            </p>
-            <Button className="bg-[#7C3AED] text-white hover:bg-[#6B21A8] py-2 px-6">
-              Get Started Free
-            </Button>
-          </div>
-        )}
-
+      <div className="flex-1 overflow-auto">
+        <div className="p-6">
         {/* Active tab content */}
         {activeTab === "clipper" ? (
-          <div className={`bg-gray-50 dark:bg-[#1E1E1E] rounded-lg p-8 ${videoLoaded ? 'mt-8' : ''}`}>
+          <div className="space-y-6">
             {!videoLoaded && (
-              <>
-                <h2 className="text-2xl font-bold mb-6">YouTube Clipper</h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  Enter a YouTube video URL, select a time segment, and create clips easily.
+              <div className="bg-gray-50 dark:bg-[#1E1E1E] rounded-lg p-6 text-center">
+                <h2 className="text-3xl font-bold mb-2">
+                  Build, share and <span className="text-[#7C3AED]">monetize</span> YouTube Content
+                </h2>
+                <p className="text-base text-gray-600 dark:text-gray-400 mb-4">
+                  Automated clip generation, shareable links and scheduling for creators.
                 </p>
-              </>
+              </div>
             )}
             <YouTubeClipper 
               onVideoLoad={() => setVideoLoaded(true)} 
@@ -147,24 +150,22 @@ export default function Home() {
             />
           </div>
         ) : activeTab === "saved" ? (
-          <div className="bg-gray-50 dark:bg-[#1E1E1E] rounded-lg p-8 mt-8">
-            <SavedClips
-              clips={savedClips}
-              onRemoveClip={(id) => {
-              setSavedClips(prev => prev.filter(clip => clip.id !== id));
-              }}
-              onUpdateClip={handleUpdateClip}
-              onSwitchToSaveClips={handleSwitchToSaveClips}
-              onVideoGenerated={handleVideoGenerated}
-            />
-          </div>
+          <SavedClips
+            clips={savedClips}
+            onRemoveClip={(id) => {
+            setSavedClips(prev => prev.filter(clip => clip.id !== id));
+            }}
+            onUpdateClip={handleUpdateClip}
+            onSwitchToSaveClips={handleSwitchToSaveClips}
+            onVideoGenerated={handleVideoGenerated}
+          />
         ) : (
-          <div className="bg-gray-50 dark:bg-[#1E1E1E] rounded-lg p-8 mt-8">
+          <div className="bg-gray-50 dark:bg-[#1E1E1E] rounded-lg p-6">
             <h2 className="text-2xl font-bold mb-6">Generated Videos</h2>
             {clipsWithVideos.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  No generated videos yet. Go to "My Clips" to generate videos from your saved clips.
+                <p className="text-base text-gray-600 dark:text-gray-400 mb-4">
+                  No generated videos yet. Go to &ldquo;My Clips&rdquo; to generate videos from your saved clips.
                 </p>
                 <Button 
                   onClick={() => setActiveTab("saved")}
@@ -225,6 +226,7 @@ export default function Home() {
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
