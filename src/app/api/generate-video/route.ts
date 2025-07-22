@@ -45,7 +45,11 @@ async function downloadVideoWithPytubefix(
     
     console.log(`Calling Python script: python3 ${scriptPath} "${youtubeUrl}" ${startTime} ${endTime} "${outputPath}"`);
     
-    const python = spawn('python3', [
+    // Use UV virtual environment Python
+    const venvPython = path.join(process.cwd(), '.venv', 'bin', 'python');
+    const pythonCmd = fsSync.existsSync(venvPython) ? venvPython : 'python3';
+    
+    const python = spawn(pythonCmd, [
       scriptPath,
       youtubeUrl,
       startTime.toString(),

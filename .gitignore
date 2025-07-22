@@ -44,6 +44,22 @@ yarn-error.log*
 *.swo
 *~
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.installed.cfg
+*.egg
+
+# UV / Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+
 # Miscellaneous
 .cache/
 .parcel-cache/

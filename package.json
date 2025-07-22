@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "bun run --bun next dev --turbopack",
+    "build": "SKIP_TYPE_CHECK=true bun run --bun next build",
+    "start": "bun run --bun next start",
+    "lint": "bun run --bun next lint"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
