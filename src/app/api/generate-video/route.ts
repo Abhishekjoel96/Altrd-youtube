@@ -228,12 +228,12 @@ export async function POST(request: NextRequest) {
     const finalVideoName = `final-${uuidv4()}.mp4`;
     const outputPath = path.join(publicDir, finalVideoName);
     
-    // --- 1. Generate SRT and Text Images ---
-    const srtPath = path.join(tempDir, 'captions.srt');
+    // --- 1. Prepare caption data and generate Text Images ---
+    let validatedCaptions: Caption[] = [];
     if (captions && captions.length > 0) {
       // Validate caption timing
       const clipDuration = endTime - startTime;
-      const validatedCaptions = captions.filter((caption: Caption) => {
+      validatedCaptions = captions.filter((caption: Caption) => {
         const captionStart = timeToSeconds(caption.start) - startTime;
         const captionEnd = timeToSeconds(caption.end) - startTime;
         return captionStart >= 0 && captionEnd <= clipDuration && captionStart < captionEnd;
@@ -241,11 +241,6 @@ export async function POST(request: NextRequest) {
 
       console.log(`Original captions: ${captions.length}, Valid captions: ${validatedCaptions.length}`);
       console.log(`Clip duration: ${clipDuration}s, Start offset: ${startTime}s`);
-      
-      const srtContent = generateSrtContent(validatedCaptions, startTime);
-      await fs.writeFile(srtPath, srtContent);
-      console.log('SRT file created:', srtPath);
-      console.log('SRT content preview:', srtContent.substring(0, 200) + '...');
     }
 
     // Get canvas dimensions for the selected aspect ratio
@@ -312,6 +307,41 @@ export async function POST(request: NextRequest) {
         fontStyle: creditItalic ? 'italic' : 'normal',
       });
       await fs.writeFile(creditImagePath, creditImageBuffer);
+    }
+
+    // Generate caption images for each caption
+    const captionImages: Array<{path: string, startTime: number, endTime: number, text: string}> = [];
+    if (validatedCaptions.length > 0) {
+      console.log('Generating caption images...');
+      for (let i = 0; i < validatedCaptions.length; i++) {
+        const caption = validatedCaptions[i];
+        const captionImagePath = path.join(tempDir, `caption_${i}.png`);
+        
+        const captionImageBuffer = await createTextImage({ 
+          text: caption.text, 
+          width: captionPosition.width,
+          fontSize: captionFontSize, 
+          fontColor: captionColor, 
+          fontFamily: captionFontFamily,
+          strokeWidth: captionStrokeWidth,
+          strokeColor: captionStrokeColor,
+          textAlign: 'center',
+          fontWeight: captionBold ? 'bold' : 'normal',
+          fontStyle: captionItalic ? 'italic' : 'normal',
+        });
+        await fs.writeFile(captionImagePath, captionImageBuffer);
+        
+        const startSeconds = timeToSeconds(caption.start) - startTime;
+        const endSeconds = timeToSeconds(caption.end) - startTime;
+        
+        captionImages.push({
+          path: captionImagePath,
+          startTime: Math.max(0, startSeconds),
+          endTime: Math.max(0, endSeconds),
+          text: caption.text
+        });
+      }
+      console.log(`Generated ${captionImages.length} caption images`);
     }
     
     // --- 2. Download video using pytubefix ---
@@ -381,35 +411,35 @@ export async function POST(request: NextRequest) {
       // Use manual positioning for text elements
       const titleYPosition = titlePosition.y;
       const creditYPosition = creditPosition.y;
-      
-      // For captions, calculate MarginV (distance from bottom)
-      // MarginV is the distance from the bottom of the video to the baseline of the text
-      const captionCenterY = captionPosition.y + (captionPosition.height / 2);
-      const captionMarginV = Math.max(0, canvasDimensions.height - captionCenterY);
 
-      // 3. Burn subtitles directly onto the processed video if they exist
-      if (captions && captions.length > 0) {
-        // Escape the subtitle file path and format the style properly
-        const subtitleFilter = `[processed_video_base]subtitles='${srtPath.replace(/'/g, "\\'")}'`;
-        const fontName = captionFontFamily.replace(/'/g, "\\'");
-        const primaryColor = captionColor.replace('#', '&H');
-        const outlineColor = captionStrokeColor.replace('#', '&H');
-        // Use manual caption positioning
-        const marginV = captionMarginV;
-        const style = `:force_style='FontName=${fontName},FontSize=${captionFontSize},PrimaryColour=${primaryColor},BorderStyle=3,OutlineColour=${outlineColor},Outline=${captionStrokeWidth},Alignment=2,MarginV=${marginV}'`;
-        filters.push(`${subtitleFilter}${style}[processed_video_with_subs]`);
-      } else {
-        filters.push('[processed_video_base]null[processed_video_with_subs]');
-      }
-
-      // 4. Overlay video on background (centered)
-      filters.push(`[bg][processed_video_with_subs]overlay=(W-w)/2:${videoYPosition}[base]`);
+      // 3. Overlay video on background first (centered)
+      filters.push(`[bg][processed_video_base]overlay=(W-w)/2:${videoYPosition}[base]`);
       
-      // 5. Overlay title image with manual positioning
+      // 4. Overlay title image with manual positioning
       filters.push(`[base][1:v]overlay=${titlePosition.x}:${titleYPosition}[with_title]`);
       
-      // 6. Overlay credit image with manual positioning
-      filters.push(`[with_title][2:v]overlay=${creditPosition.x}:${creditYPosition}[final_video]`);
+      // 5. Overlay credit image with manual positioning
+      filters.push(`[with_title][2:v]overlay=${creditPosition.x}:${creditYPosition}[with_overlays]`);
+
+      let currentStream = 'with_overlays';
+
+      // 6. Add dynamic caption overlays if they exist
+      if (captionImages.length > 0) {
+        console.log(`Setting up ${captionImages.length} dynamic caption overlays`);
+        
+        captionImages.forEach((captionImg, index) => {
+          const inputIndex = 3 + index; // Inputs: 0=video, 1=title, 2=credit, 3+=captions
+          const nextStream = index === captionImages.length - 1 ? 'final_video' : `with_caption_${index}`;
+          
+          // Use enable parameter to show caption only during its time window
+          const enableCondition = `between(t,${captionImg.startTime},${captionImg.endTime})`;
+          filters.push(`[${currentStream}][${inputIndex}:v]overlay=${captionPosition.x}:${captionPosition.y}:enable='${enableCondition}'[${nextStream}]`);
+          
+          currentStream = nextStream;
+        });
+      } else {
+        filters.push(`[${currentStream}]null[final_video]`);
+      }
       
       // 7. Copy audio stream from input 0 (downloaded video)
       filters.push(`[0:a]acopy[final_audio]`);
@@ -422,7 +452,14 @@ export async function POST(request: NextRequest) {
       const command = ffmpeg()
         .input(downloadedVideoPath) // Input 0: Video (downloaded via pytubefix)
         .input(titleImagePath)  // Input 1: Title Image
-        .input(creditImagePath) // Input 2: Credit Image
+        .input(creditImagePath); // Input 2: Credit Image
+      
+      // Add caption images as inputs
+      captionImages.forEach((captionImg) => {
+        command.input(captionImg.path);
+      });
+      
+      command
         .complexFilter(filterchain, ['final_video', 'final_audio'])
         .outputOptions([
           '-c:a', 'aac',             // Encode audio as AAC
