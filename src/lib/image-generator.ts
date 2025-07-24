@@ -23,7 +23,7 @@ interface TextToImageOptions {
 export const createTextImage = async (options: TextToImageOptions): Promise<Buffer> => {
   const {
     text,
-    width,
+    width: rawWidth,
     fontSize = 40,
     fontColor = 'white',
     fontFamily = 'Inter-Medium',
@@ -33,6 +33,21 @@ export const createTextImage = async (options: TextToImageOptions): Promise<Buff
     fontWeight = 'normal',
     fontStyle = 'normal',
   } = options;
+
+  // Add bounds checking for width to prevent memory issues
+  const width = Math.min(Math.max(rawWidth, 1), 32767);
+  if (rawWidth !== width) {
+    console.warn(`Canvas width clamped from ${rawWidth} to ${width}`);
+  }
+
+  // Add text length validation to prevent excessive processing
+  const maxTextLength = 50000;
+  const processedText = text.length > maxTextLength ? 
+    text.substring(0, maxTextLength) + '...' : text;
+  
+  if (text.length > maxTextLength) {
+    console.warn(`Text too long, truncating from ${text.length} to ${maxTextLength} characters`);
+  }
 
   let finalFontFamily = fontFamily;
 
@@ -54,7 +69,7 @@ export const createTextImage = async (options: TextToImageOptions): Promise<Buff
   tempCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${finalFontFamily}`;
 
   // 3. Implement word wrapping
-  const words = text.split(' ');
+  const words = processedText.split(' ');
   const lines = [];
   let currentLine = words[0] || '';
 
@@ -73,7 +88,16 @@ export const createTextImage = async (options: TextToImageOptions): Promise<Buff
 
   // 4. Create the final canvas with the correct height
   const lineHeight = fontSize * 1.2;
-  const canvasHeight = lines.length * lineHeight + 20; // Add padding
+  
+  // Add bounds checking to prevent array length errors
+  const maxLines = Math.floor((32767 - 20) / lineHeight); // Max safe canvas height
+  const limitedLines = lines.slice(0, maxLines);
+  
+  if (lines.length > maxLines) {
+    console.warn(`Text too long, truncating to ${maxLines} lines (original: ${lines.length} lines)`);
+  }
+  
+  const canvasHeight = limitedLines.length * lineHeight + 20; // Add padding
   const finalCanvas = createCanvas(width, canvasHeight);
   const ctx = finalCanvas.getContext('2d');
 
@@ -89,7 +113,7 @@ export const createTextImage = async (options: TextToImageOptions): Promise<Buff
     xPos = width - 20; // 20px padding from right
   }
 
-  lines.forEach((line, index) => {
+  limitedLines.forEach((line, index) => {
     const yPos = (index + 1) * lineHeight - (lineHeight - fontSize) / 2;
     
     // Draw stroke if specified
