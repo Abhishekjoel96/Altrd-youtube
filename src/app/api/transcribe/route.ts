@@ -69,6 +69,16 @@ export async function POST(request: NextRequest) {
       Ensure your output is a valid JSON array of caption objects, conforming to the provided schema. Do not add any extra text or explanations.
     `;
     
+    // Add small offset to compensate for model perception timing
+    const adjustedStartTime = startTime + 0.15;
+    const adjustedEndTime = endTime + 0.15;
+    
+    // Extract whole seconds and calculate nanoseconds from fractional part
+    const startSeconds = Math.floor(adjustedStartTime);
+    const startNanos = Math.round((adjustedStartTime - startSeconds) * 1_000_000_000);
+    const endSeconds = Math.floor(adjustedEndTime);
+    const endNanos = Math.round((adjustedEndTime - endSeconds) * 1_000_000_000);
+
     const videoPart: Part = {
       fileData: {
         mimeType: 'video/mp4',
@@ -76,12 +86,12 @@ export async function POST(request: NextRequest) {
       },
       videoMetadata: {
         startOffset: {
-          seconds: startTime,
-          nanos: 0
+          seconds: startSeconds,
+          nanos: startNanos
         },
         endOffset: {
-          seconds: endTime,
-          nanos: 0
+          seconds: endSeconds,
+          nanos: endNanos
         }
       }
     } as Part;
