@@ -35,7 +35,7 @@ def select_best_stream(yt, target_resolution='1080p'):
             streams, 
             key=lambda s: (
                 0 if s.resolution and s.resolution == target_resolution else 1,  # Prioritize target resolution
-                -int(s.resolution.replace('p', '') if s.resolution else 0)  # Then sort by resolution
+                -int(s.resolution.replace('p', '')) if s.resolution and s.resolution != 'None' else 0  # Then sort by resolution
             )
         )
         
