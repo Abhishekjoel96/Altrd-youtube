@@ -65,6 +65,13 @@ export async function POST(request: NextRequest) {
       10. Do not add any buffer time, delays, or early starts - be precise to the exact millisecond when speech occurs.
       11. If there are pauses in speech, do not extend captions - end them when words stop and start new ones when words resume.
       
+      EXTREMELY IMPORTANT - TIMING CONSISTENCY FOR LONGER CLIPS:
+      12. Maintain extremely consistent millisecond-level timing accuracy relative to the provided start time throughout the *entire* clip duration.
+      13. Pay close attention to long segments to prevent cumulative drift - timing accuracy at the end of the clip is as critical as timing at the beginning.
+      14. For clips longer than 30 seconds, periodically re-verify your timing against the actual audio to prevent accumulated timing errors.
+      15. Do not let timing drift occur progressively through the clip - each caption must be independently timed to the actual audio moment.
+      16. The final caption's timing must be as precise as the first caption's timing, regardless of clip duration.
+      
       AUDIO SYNCHRONIZATION IS CRITICAL - The final video must have perfect lip-sync accuracy.
       Ensure your output is a valid JSON array of caption objects, conforming to the provided schema. Do not add any extra text or explanations.
     `;
