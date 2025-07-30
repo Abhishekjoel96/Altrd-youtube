@@ -34,7 +34,7 @@ def select_best_stream(yt, target_resolution='1080p'):
         sorted_streams = sorted(
             streams, 
             key=lambda s: (
-                0 if s.resolution == target_resolution else 1,  # Prioritize target resolution
+                0 if s.resolution and s.resolution == target_resolution else 1,  # Prioritize target resolution
                 -int(s.resolution.replace('p', '') if s.resolution else 0)  # Then sort by resolution
             )
         )
@@ -81,7 +81,7 @@ def select_best_audio_stream(yt):
         # Sort by audio bitrate, highest first
         sorted_audio_streams = sorted(
             audio_streams, 
-            key=lambda s: int(s.abr.replace('kbps', '') if s.abr else 0), 
+            key=lambda s: int(s.abr.replace('kbps', '') if s.abr and s.abr != 'None' else 0), 
             reverse=True
         )
         

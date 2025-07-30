@@ -191,8 +191,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       youtubeUrl,
-      startTime,
-      endTime,
+      startTime: rawStartTime,
+      endTime: rawEndTime,
       captions,
       title,
       credit,
@@ -219,6 +219,26 @@ export async function POST(request: NextRequest) {
       captionPosition = { x: 180, y: 860, width: 720, height: 200 },
       creditPosition = { x: 180, y: 1600, width: 720, height: 200 },
     } = body;
+
+    // Validate and set default values for startTime and endTime
+    const startTime = typeof rawStartTime === 'number' && !isNaN(rawStartTime) && rawStartTime >= 0 ? rawStartTime : 0;
+    const endTime = typeof rawEndTime === 'number' && !isNaN(rawEndTime) && rawEndTime > startTime ? rawEndTime : startTime + 30;
+
+    // Validate YouTube URL
+    if (!youtubeUrl || typeof youtubeUrl !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid YouTube URL provided' },
+        { status: 400 }
+      );
+    }
+
+    // Ensure minimum clip duration
+    if (endTime - startTime < 1) {
+      return NextResponse.json(
+        { error: 'Clip duration must be at least 1 second' },
+        { status: 400 }
+      );
+    }
 
     console.log('Video generation request:', { title, credit, youtubeUrl, startTime, endTime, aspectRatio });
 
