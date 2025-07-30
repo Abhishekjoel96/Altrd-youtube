@@ -126,8 +126,39 @@ export async function POST(request: NextRequest) {
     
     const captions: Caption[] = JSON.parse(response.text());
 
+    // Calculate duration correction factor before adjusting timestamps
+    const expectedDuration = endTime - startTime;
+    
+    // Calculate total duration of relative captions
+    let totalCaptionDuration = 0;
+    if (captions.length > 0) {
+      const lastCaption = captions[captions.length - 1];
+      totalCaptionDuration = timeToSeconds(lastCaption.end);
+    }
+    
+    // Calculate stretch factor to match expected duration
+    const stretchFactor = totalCaptionDuration > 0 ? expectedDuration / totalCaptionDuration : 1;
+    
+    console.log(`Duration correction: expected=${expectedDuration}s, actual=${totalCaptionDuration}s, stretchFactor=${stretchFactor}`);
+
+    // Apply stretch factor to relative timestamps before converting to absolute
+    const stretchedCaptions = captions.map(caption => {
+      const relativeStart = timeToSeconds(caption.start);
+      const relativeEnd = timeToSeconds(caption.end);
+      
+      // Apply stretch factor to relative times
+      const adjustedRelativeStart = relativeStart * stretchFactor;
+      const adjustedRelativeEnd = relativeEnd * stretchFactor;
+      
+      return {
+        ...caption,
+        start: formatTimestamp(adjustedRelativeStart),
+        end: formatTimestamp(adjustedRelativeEnd)
+      };
+    });
+
     // Adjust captions to be relative to the clip start time for proper synchronization
-    const adjustedCaptions = captions.map(caption => ({
+    const adjustedCaptions = stretchedCaptions.map(caption => ({
       ...caption,
       start: formatTimestamp(timeToSeconds(caption.start) + startTime),
       end: formatTimestamp(timeToSeconds(caption.end) + startTime)
