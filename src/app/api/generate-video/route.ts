@@ -423,17 +423,17 @@ export async function POST(request: NextRequest) {
       // 2. Create background with custom color and dynamic size
       filters.push(`color=c=${canvasBackgroundColor.replace('#', '')}:s=${canvasDimensions.width}x${canvasDimensions.height}:d=${duration}[bg]`);
 
-      // Calculate video position (centered)
-      const videoWidth = parseInt(videoProcessing.scale.split(':')[1]) || canvasDimensions.width;
-      const videoHeight = parseInt(videoProcessing.scale.split(':')[1]) || parseInt(videoProcessing.scale.split(':')[0]);
-      const videoYPosition = (canvasDimensions.height - videoHeight) / 2;
+      // Calculate video position (centered) - Use canvas dimensions since video scales to fit
+      // With force_original_aspect_ratio=decrease, video will be scaled down to fit within canvas
+      // So we center it within the full canvas dimensions
+      const videoYPosition = 0; // Video will be centered by FFmpeg's overlay positioning
       
       // Use manual positioning for text elements
       const titleYPosition = titlePosition.y;
       const creditYPosition = creditPosition.y;
 
-      // 3. Overlay video on background first (centered)
-      filters.push(`[bg][processed_video_base]overlay=(W-w)/2:${videoYPosition}[base]`);
+      // 3. Overlay video on background (centered both horizontally and vertically)
+      filters.push(`[bg][processed_video_base]overlay=(W-w)/2:(H-h)/2[base]`);
       
       // 4. Overlay title image with manual positioning
       filters.push(`[base][1:v]overlay=${titlePosition.x}:${titleYPosition}[with_title]`);
